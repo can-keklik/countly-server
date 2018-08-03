@@ -2238,3 +2238,11 @@ input.custom-styled-green-check:checked {border-color: #C2C2C2;}
 
 .compare-view.d-table .up.inverse-trend { color: #D63E40!important;  }
 .compare-view.d-table .down.inverse-trend { color: #2fa732!important;  }
+
+.ui-datepicker-calendar td.in-range-highlight{
+  background-color: rgba(46, 167, 50, 0.6);
+}
+
+.ui-datepicker-calendar .ui-datepicker-unselectable.in-range-highlight{
+  background-color: inherit
+}
