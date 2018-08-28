@@ -98,7 +98,7 @@ window.AlertsView = countlyView.extend({
 					return countlyGlobal.apps[appID] && countlyGlobal.apps[appID].name
 				});
 			}
-			
+
 
 			pluginsData.push({
 				id: alertsList[i]._id,
@@ -161,16 +161,16 @@ window.AlertsView = countlyView.extend({
 				"mData": 'createdByUser',
 				"sType": "string",
 				"sTitle": 'Created by',
-				"bSortable": false					
+				"bSortable": false
 			});
 		};
 		dataTableDefine.aoColumns.push({
 			"mData": function (row) {
 				return "<div class='options-item'>" +
 					"<div class='edit'></div>" +
-					"<div class='edit-menu'>" +
-					"<div class='edit-alert item'" + " id='" + row.id + "'" + ">Edit</div>" +
-					"<div class='delete-alert item'" + " id='" + row.id + "'"+ " data-name='"+row.alertName+"'" + ">Delete</div></div>" +
+					"<div class='edit-menu alerts-menu'>" +
+					"<div class='edit-alert item'" + " id='" + row.id + "'" + "><i class='fa fa-pencil'></i>Edit</div>" +
+					"<div class='delete-alert item'" + " id='" + row.id + "'"+ " data-name='"+row.alertName+"'" + "><i class='fa fa-trash'></i>Delete</div></div>" +
 					"</div>";
 			},
 			"bSortable": false,
@@ -210,12 +210,12 @@ window.AlertsView = countlyView.extend({
 			return $(".data-saver-bar").addClass("data-saver-bar-hide");
 		})
 
-		// load menu 
+		// load menu
 		$("body").off("click", ".options-item .edit").on("click", ".options-item .edit", function () {
             $(this).next(".edit-menu").fadeToggle();
             event.stopPropagation();
 		});
-  
+
         $(window).click(function() {
             $(".options-item").find(".edit").next(".edit-menu").fadeOut();
         });
@@ -255,7 +255,7 @@ window.AlertsView = countlyView.extend({
 	},
 	widgetDrawer: {
 		loadAppViewData: function(selectedView){
-			var appID = $("#single-app-dropdown").clySelectGetSelection();								
+			var appID = $("#single-app-dropdown").clySelectGetSelection();
 			if (appID) {
 				alertsPlugin.getViewForApp(appID, function (viewList) {
 					$("#single-target2-dropdown").clySelectSetItems(viewList);
@@ -264,58 +264,58 @@ window.AlertsView = countlyView.extend({
 							$("#single-target2-dropdown").clySelectSetSelection(selectedView, selectedView);
 						});
 					}else {
-						$("#single-target2-dropdown").clySelectSetSelection("", "Select a View");						
+						$("#single-target2-dropdown").clySelectSetSelection("", "Select a View");
 					}
 				});
 			}else{
-				$("#single-target2-dropdown").clySelectSetSelection("", "please select app first");						
-				
+				$("#single-target2-dropdown").clySelectSetSelection("", "please select app first");
+
 			}
-		
+
 		},
 		init: function () {
 			var self = this;
 			var apps = [];
 
-			// clear alertName 
+			// clear alertName
 			$("#alert-name-input").val('');
 
 			// select alert data type : metric , event crash
 			var metricClickListner = function(){
 				$("#single-target-dropdown").off("cly-select-change").on("cly-select-change", function (e, selected) {
-					var dataType =  $(($('#alert-data-types').find(".selected")[0])).data("dataType");			
+					var dataType =  $(($('#alert-data-types').find(".selected")[0])).data("dataType");
 					var source = $("#" + dataType + "-condition-template").html();
-					$('.alert-condition-block').html(source); 
- 					
+					$('.alert-condition-block').html(source);
+
 					if(selected === 'Number of page views'){
 						var source = $("#metric2-condition-template").html();
 						$('.alert-condition-block').html(source);
 						$("#single-target-dropdown").clySelectSetItems(alertDefine[dataType].target);
- 						self.loadAppViewData();	
+ 						self.loadAppViewData();
 					}else if(selected === 'Bounce rate'){
 						var source = $("#metric2-condition-template").html();
 						$('.alert-condition-block').html(source);
 						$("#single-target-dropdown").clySelectSetItems(alertDefine[dataType].target);
- 						self.loadAppViewData();	
+ 						self.loadAppViewData();
 					}else if (selected === 'New crash occurence') {
 						$("#single-target-condition-dropdown").css("visibility","hidden");
 						$('#alert-compare-value').css("visibility","hidden");
 					} else {
-						$("#single-target-condition-dropdown").css("visibility","visible");							
-						$('#alert-compare-value').css("visibility","visible"); 
+						$("#single-target-condition-dropdown").css("visibility","visible");
+						$('#alert-compare-value').css("visibility","visible");
 					}
 
-					
+
 					$("#single-target-dropdown").clySelectSetItems(alertDefine[dataType].target);
 					$("#single-target-condition-dropdown").clySelectSetItems(alertDefine[dataType].condition);
 					for(var i = 0; i < alertDefine[dataType].target.length; i++){
 						var item = alertDefine[dataType].target[i];
 						if( item.value === selected){
-							$("#single-target-dropdown").clySelectSetSelection(item.value, item.name);							
+							$("#single-target-dropdown").clySelectSetSelection(item.value, item.name);
 						}
 					}
 					metricClickListner();
-					app.localize();					
+					app.localize();
 				});
 			}
 			$(".alert-data-type").off("click").on("click", function () {
@@ -326,12 +326,12 @@ window.AlertsView = countlyView.extend({
 
 				$("#widget-section-single-app").show();
 				$("#single-app-dropdown").clySelectSetSelection("", "Select App");
-				
+
 				var source = $("#" + dataType + "-condition-template").html();
 				$('.alert-condition-block').html(source);
 				$("#single-target-dropdown").clySelectSetItems(alertDefine[dataType].target);
 				$("#single-target-condition-dropdown").clySelectSetItems(alertDefine[dataType].condition);
- 				
+
 				app.localize();
 				switch (dataType) {
 					case 'metric':
@@ -340,21 +340,21 @@ window.AlertsView = countlyView.extend({
 						break;
 					case 'event':
 						break;
-				}      
+				}
 
 			})
 			// init content
 			$(".alert-condition-block").html('');
 
- 
+
 			for (var appId in countlyGlobal.apps) {
 				apps.push({ value: appId, name: countlyGlobal.apps[appId].name });
 			}
 			// $("#multi-app-dropdown").clyMultiSelectSetItems(apps);
 			$("#single-app-dropdown").clySelectSetItems(apps);
 			$("#single-app-dropdown").off("cly-select-change").on("cly-select-change", function (e, selected) {
-				var dataType =  $(($('#alert-data-types').find(".selected")[0])).data("dataType");	
-				var dataSubType = $("#single-target-dropdown").clySelectGetSelection();	
+				var dataType =  $(($('#alert-data-types').find(".selected")[0])).data("dataType");
+				var dataSubType = $("#single-target-dropdown").clySelectGetSelection();
  				if (selected && dataType === 'event') {
 					alertsPlugin.getEventsForApps(selected, function (eventData) {
 						$("#single-target-dropdown").clySelectSetItems(eventData);
@@ -372,9 +372,9 @@ window.AlertsView = countlyView.extend({
 			$("#single-app-dropdown").clySelectSetSelection({});
 
 
-			//alert by 
+			//alert by
 			$("#email-alert-input").val("");
- 			
+
 			$("#alert-widget-drawer").find(".section.settings").hide();
 
 			// $("#alert-widget-drawer").trigger("cly-widget-section-complete");
@@ -433,7 +433,7 @@ window.AlertsView = countlyView.extend({
 					for (var index in data.selectedApps) {
 					   var appId = data.selectedApps[index];
 					   countlyGlobal.apps[appId] && $("#single-app-dropdown").clySelectSetSelection(appId, countlyGlobal.apps[appId].name);
-				   	} 
+				   	}
 
 
 					var target = _.find(alertDefine[data.alertDataType]['target'], function (m) {
@@ -442,7 +442,7 @@ window.AlertsView = countlyView.extend({
 					if (target) {
 						$("#single-target-dropdown").clySelectSetSelection(target.value, target.name);
 					}
-			
+
 					if(data.alertDataSubType2 && (data.alertDataSubType === 'Number of page views' || data.alertDataSubType === 'Bounce rate')){
 						this.loadAppViewData(data.alertDataSubType2)
 					}
@@ -455,7 +455,7 @@ window.AlertsView = countlyView.extend({
  					for (var index in data.selectedApps) {
 						var appId = data.selectedApps[index];
 						countlyGlobal.apps[appId] && $("#single-app-dropdown").clySelectSetSelection(appId, countlyGlobal.apps[appId].name);
-					} 
+					}
  					break;
 			}
 			var condition = _.find(alertDefine[data.alertDataType]['condition'], function (m) {
@@ -471,7 +471,7 @@ window.AlertsView = countlyView.extend({
 				}
 			}
 
-		 
+
 			$("#save-widget").removeClass("disabled");
 		},
 
@@ -484,7 +484,7 @@ window.AlertsView = countlyView.extend({
 				compareType: $('#single-target-condition-dropdown').clySelectGetSelection(),
 				compareValue: $('#alert-compare-value-input').val(),
 				period:  'every 59 mins starting on the 59 min',     // 'every 10 seconds',    //'at 23:59 everyday',
-				alertBy: 'email', 
+				alertBy: 'email',
 			};
 			if(enabled){
 				settings.enabled = true;
@@ -507,8 +507,8 @@ window.AlertsView = countlyView.extend({
 			var selectedSingleAPP = $("#single-app-dropdown").clySelectGetSelection();
 			settings['selectedApps'] = selectedSingleAPP ? [selectedSingleAPP] : null;
 
-			settings['compareDescribe'] = settings.alertDataSubType +  (settings.alertDataSubType2 ? ' (' + settings.alertDataSubType2 + ')' : '') + 
-				' ' + settings.compareType + 
+			settings['compareDescribe'] = settings.alertDataSubType +  (settings.alertDataSubType2 ? ' (' + settings.alertDataSubType2 + ')' : '') +
+				' ' + settings.compareType +
 				' ' + settings.compareValue + "%";
 
 			var dictObject = dict[settings.alertDataType] && dict[settings.alertDataType][settings.alertDataSubType];
