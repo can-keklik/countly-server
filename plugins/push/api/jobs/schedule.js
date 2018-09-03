@@ -1,3 +1,5 @@
+/* jshint ignore:start */
+
 const J = require('../../../../api/parts/jobs/job.js'),
     log = require('../../../../api/utils/log.js')('job:push:schedule:' + process.pid),
     S = require('../parts/store.js'),
@@ -21,31 +23,46 @@ class ScheduleJob extends J.Job {
     }
 
     async run (db, done) {
+        let update, error;
+
         if (!this.note) {
-            return done('Note not found');
+            error = 'Note not found';
         } else if (this.note.result.status & N.Status.Deleted) {
-            return done('Note deleted');
-        } else if (this.note.result.status & N.Status.Deleted) {
-            return done('Note deleted');
+            update = {$set: {'result.total': 0}, $bit: {'result.status': {and: ~N.Status.Scheduled, or: N.Status.Deleted}}};
+            error = 'Note deleted';
+        } else if (this.note.result.status & N.Status.Aborted) {
+            update = {$set: {'result.total': 0}, $bit: {'result.status': {and: ~N.Status.Scheduled, or: N.Status.Aborted}}};
+            error = 'Note deleted';
         } else if (this.note.tx || this.note.auto) {
-            return done();
+            error = 'tx or auto';
+        } else {
+            await this.sg.ensureIndexes(this.note);
+            let result = await this.sg.pushApps(this.note);
+            if (result.total === 0) {
+                update = {$set: {'result.total': 0, 'result.processed': 0, 'result.status': N.Status.DONE_ABORTED, 'result.error': 'No audience'}, $unset: {'result.nextbatch': 1}};
+            } else {
+                update = {$set: {'result.total': result.total, 'result.nextbatch': result.next || undefined}, $bit: {'result.status': {or: N.Status.Scheduled}}};
+            }
         }
 
-        let result = await this.sg.pushApps(this.note),
-            update = {$set: {'result.total': result.total, 'result.nextbatch': result.next || undefined}, $bit: {'result.status': {or: N.Status.Scheduled}}};
-        
-        await this.note.updateAtomically(db, {'result.status': {$bitsAllSet: N.Status.Created, $bitsAllClear: N.Status.Deleted | N.Status.Aborted}}, update).then(neo => {
-            if (neo) {
-                log.i('Updated note %s with scheduling results: %j', this.note._id, update);
-                done();
-            } else {
-                log.w('Couldn\'t update note %s with %j', this.note._id, update);
-                done('findAndModify didn\'t succeed');
-            }
-        }, err => {
-            log.e('Error while scheduling note %s', this.note._id);
-            done(err);
-        });
+        if (update) {
+            await this.note.updateAtomically(db, {'result.status': {$bitsAllSet: N.Status.Created, $bitsAllClear: N.Status.Deleted | N.Status.Aborted}}, update).then(neo => {
+                if (neo) {
+                    log.i('Updated note %s with scheduling results: %j', this.note._id, update);
+                } else {
+                    log.w('Couldn\'t update note %s with %j', this.note._id, update);
+                }
+            }, err => {
+                log.e('Error while scheduling note %s', this.note._id);
+                done(err);
+            });
+        }
+
+        if (error) {
+            done(error);
+        } else {
+            done();
+        }
     }
 }
 

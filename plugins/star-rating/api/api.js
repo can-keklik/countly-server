@@ -153,7 +153,7 @@ var plugin = {},
             if (params.qstring.hide_sticker) changes["hide_sticker"] = params.qstring.hide_sticker;
             common.db.collection(collectionName).findAndModify({
                 _id: widgetId
-            }, {}, changes, function(err, widget) {
+            }, {}, {$set:changes}, function(err, widget) {
                 if (!err) {
                     common.returnMessage(params, 200, 'Success');
                     return true;
@@ -180,25 +180,31 @@ var plugin = {},
             params.qstring.events = params.qstring.events.filter(function(currEvent) {
                 if (currEvent.key == "[CLY]_star_rating") {
                     /**
-                     *  register for process new  rating event data.
-                     *  the original event format like:
-                     *  { key: '[CLY]_star_rating', count:1, sum:1, segmentation:{ platform:"iOS", version:"3.2", rating:2}
-                     *  this function will add a field call "platform_version_rate" in segmentation.
-                     */
-                    currEvent.segmentation['platform_version_rate'] = currEvent.segmentation['platform'] + "**" + currEvent.segmentation['app_version'] + "**" + currEvent.segmentation['rating'] + "**";
+                    *  register for process new  rating event data.
+                    *  the original event format like:
+                    *  { key: '[CLY]_star_rating', count:1, sum:1, segmentation:{ platform:"iOS", version:"3.2", rating:2}
+                    *  this function will add a field call "platform_version_rate" in segmentation.
+                    */
+                    currEvent.segmentation['platform'] = currEvent.segmentation['platform'] || "undefined"; //because we have a lot of old data with undefined
+                    currEvent.segmentation['rating'] = currEvent.segmentation['rating'] || "undefined"; 
+                    currEvent.segmentation['widget_id']= currEvent.segmentation['widget_id'] || "undefined";
+                    currEvent.segmentation['app_version'] = currEvent.segmentation['app_version'] || "undefined";
+                    currEvent.segmentation['platform_version_rate'] = currEvent.segmentation['platform'] + "**" + currEvent.segmentation['app_version'] + "**" + currEvent.segmentation['rating'] + "**"+ currEvent.segmentation['widget_id'] + "**";
                     // is provided email & comment fields
                     if ((currEvent.segmentation.email && currEvent.segmentation.email.length > 0) || (currEvent.segmentation.comment && currEvent.segmentation.comment.length > 0)) {
                         var collectionName = 'feedback' + ob.params.app._id;
                         common.db.collection(collectionName).insert({
                             "email": currEvent.segmentation.email,
                             "comment": currEvent.segmentation.comment,
-                            "ts": currEvent.timestamp,
+                            "ts": currEvent.timestamp || params.time.timestamp,
                             "device_id": params.qstring.device_id,
                             "cd": new Date(),
                             "uid": params.app_user.uid,
                             "contact_me": currEvent.segmentation.contactMe,
                             "rating": currEvent.segmentation.rating,
-                            "widget_id": currEvent.segmentation.widget_id,
+                            "platform": currEvent.segmentation.platform,
+                            "app_version": currEvent.segmentation.app_version,
+                            "widget_id": currEvent.segmentation.widget_id
                         }, function(err, saved) {
                             if (err) {
                                 return false;
@@ -287,11 +293,19 @@ var plugin = {},
         var app = params.qstring.app_id;
         var collectionName = 'feedback' + app;
         var query = {};
+        
+        query["ts"] = countlyCommon.getTimestampRangeQuery(params, true);
         if (params.qstring.widget_id) {
             query["widget_id"] = params.qstring.widget_id;
         }
         if (params.qstring.rating) {
-            query["rating"] = params.qstring.rating;
+            query["rating"] = parseInt(params.qstring.rating);
+        }
+        if (params.qstring.version) {
+            query["app_version"] = params.qstring.version;
+        }
+        if (params.qstring.platform) {
+            query["platform"] = params.qstring.platform;
         }
         if (params.qstring.device_id) {
             query["device_id"] = params.qstring.device_id;
@@ -361,6 +375,10 @@ var plugin = {},
             var query = {};
             if (params.qstring.is_active) {
                 query["is_active"] = params.qstring.is_active;
+            }
+            
+            if (params.qstring.app_id) {
+                query["app_id"] = params.qstring.app_id;
             }
             common.db.collection(collectionName).find(query).toArray(function(err, docs) {
                 if (!err) {

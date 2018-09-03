@@ -1,5 +1,7 @@
 'use strict';
 
+/* jshint ignore:start */
+
 var common          = require('../../../../api/utils/common.js'),
     log             = common.log('push:endpoints'),
     api             = {},
@@ -345,6 +347,8 @@ function catchy(f) {
             return [{error: 'Not enough args'}];
         }
 
+        log.d('validating args %j, data %j', params.qstring.args, data);
+
         if (!skipAppsPlatforms) {
             if (!skipMpl) {
                 if (['message', 'data'].indexOf(data.type) === -1) {
@@ -360,7 +364,7 @@ function catchy(f) {
                 data.source = data.source || 'api';
             }
 
-            if (data.platforms.filter(x => Object.values(N.Platform).indexOf(x) === -1).length) {
+            if (!data.platforms || data.platforms.filter(x => Object.values(N.Platform).indexOf(x) === -1).length) {
                 return [{error: `Bad message plaform: only ${N.Platform.IOS} (IOS) & ${N.Platform.ANDROID} (ANDROID) are supported`}];
             }
 
@@ -465,14 +469,16 @@ function catchy(f) {
         }
 
         if (data.auto) {
-            if (!data.autoCohorts || !data.autoCohorts.length) {
-                return [{error: 'Cohorts are required for auto messages'}];
-            }
-            if (!cohorts || data.autoCohorts.length != cohorts.length) {
-                return [{error: 'Cohort not found'}];
-            }
-            if (data.autoOnEntry !== false && data.autoOnEntry !== true) {
-                return [{error: 'autoOnEntry is required for auto messages'}];
+            if (!skipMpl) {
+                if (!data.autoCohorts || !data.autoCohorts.length) {
+                    return [{error: 'Cohorts are required for auto messages'}];
+                }
+                if (!cohorts || data.autoCohorts.length != cohorts.length) {
+                    return [{error: 'Cohort not found'}];
+                }
+                if (data.autoOnEntry !== false && data.autoOnEntry !== true) {
+                    return [{error: 'autoOnEntry is required for auto messages'}];
+                }
             }
         } else if (data.tx) {
 
@@ -496,11 +502,12 @@ function catchy(f) {
                 return [{error: 'Test changed after preparing message'}];
             }
 
-            if ((data.userConditions || prepared.userConditions) && JSON.stringify(data.userConditions || {}) !== (prepared.userConditions || '{}')) {
+            if ((data.userConditions || prepared.userConditions) && JSON.stringify(data.userConditions || {}) !== JSON.stringify(prepared.userConditions || {})) {
+                // log.d('Compared data %j to prepared %j', JSON.stringify(data.userConditions || {}), (prepared.userConditions || '{}'));
                 return [{error: 'userConditions changed after preparing message'}];
             }
 
-            if ((data.drillConditions || prepared.drillConditions) && JSON.stringify(data.drillConditions || {}) !== (prepared.drillConditions || '{}')) {
+            if ((data.drillConditions || prepared.drillConditions) && JSON.stringify(data.drillConditions || {}) !== JSON.stringify(prepared.drillConditions || {})) {
                 return [{error: 'drillConditions changed after preparing message'}];
             }
         }
@@ -535,7 +542,7 @@ function catchy(f) {
             tx: data.tx || false,
             auto: data.auto || false,
             autoOnEntry: data.auto ? data.autoOnEntry : undefined,
-            autoCohorts: data.auto ? cohorts.map(c => c._id) : undefined,
+            autoCohorts: data.auto && cohorts ? cohorts.map(c => c._id) : undefined,
             autoEnd: data.auto ? data.autoEnd : undefined,
             autoDelay: data.auto ? data.autoDelay : undefined,
             autoTime: data.auto ? data.autoTime : undefined,
@@ -599,20 +606,22 @@ function catchy(f) {
 
             if (!params.res.finished) {
                 if (total === 0) {
-                    return common.returnMessage(params, 400, 'No audience');
+                    note.build = {total: total, count: locales};
+                    note.result.total = total;
+                    log.i('Returning empty audience for %s: %j', note._id, note.build);
+                    ret(note);
                 } else {
                     note.build = {total: total, count: locales};
                     note.result.total = total;
-
                     log.i('Returning full audience for %s: %j', note._id, note.build);
                     ret(note);
                 }
             }
 
             let update = {$set: {build: note.build}};
-            if (!note.auto && !note.tx) {
-                update.$set['result.total'] = total;
-            }
+            // if (!note.auto && !note.tx) {
+            //     update.$set['result.total'] = total;
+            // }
             return await note.updateAtomically(common.db, {'result.status': N.Status.NotCreated}, update).then(neo => {
                 log.i('Saved full audience for %s: %j', note._id, neo);
                 return neo;
@@ -642,6 +651,11 @@ function catchy(f) {
             log.i('No prepared message, preparing');
             let tmp = await api.prepare(params, true);
             log.i('Prepared %j', tmp);
+            if (!tmp) {
+                return;
+            } else if (tmp.error) {
+                return common.returnOutput(params, tmp);
+            }
             params.qstring.args._id = tmp._id.toString();
             [note, prepared, apps] = await api.validate(params);
             log.i('After preparation note %j, prepared %j, returned %j', note, prepared, tmp);
@@ -673,7 +687,7 @@ function catchy(f) {
             await common.dbPromise('messages', prepared ? 'save' : 'insertOne', json);
             common.returnOutput(params, json);
         } else {
-            if (!prepared || !prepared.result.total) {
+            if (!prepared || !prepared.build.total) {
                 return common.returnOutput(params, {error: 'No audience'});
             }
 
@@ -724,8 +738,10 @@ function catchy(f) {
         log.d('Prepared %j', prepared);
         log.i('Diff %j', diff);
 
-        let sg = new S.StoreGroup(common.db),
-            result = await sg.pushApps(prepared, null, note.date.getTime(), Object.keys(diff).length ? diff : null);
+        let sg = new S.StoreGroup(common.db);
+        await sg.ensureIndexes(prepared);
+
+        let result = await sg.pushApps(prepared, null, note.date.getTime(), Object.keys(diff).length ? diff : null);
 
         log.i('Push results %j', result);
 
@@ -756,7 +772,7 @@ function catchy(f) {
 
     api.getAllMessages = function (params) {
         var query = {
-            'result.status': {$bitsAllClear: N.Status.Deleted | N.Status.Aborted}
+            'result.status': {$bitsAllSet: N.Status.Created, $bitsAllClear: N.Status.Deleted}
         };
 
         if (!params.qstring.app_id) {
@@ -866,9 +882,9 @@ function catchy(f) {
                 return false;
             }
 
-            let store = new S.StoreGroup(common.db);
-            store.clear(new N.Note(message)).then(() => {
-                log.i('Cleared scheduled notifications for %s', message._id);
+            let sg = new S.StoreGroup(common.db);
+            sg.clearNote(new N.Note(message)).then(deleted => {
+                log.i('Cleared %d scheduled notifications for %s', deleted, message._id);
             }, err => {
                 log.w('Error while clearing scheduled notifications for %s: %j', message._id, err.stack || err);
             });
@@ -926,7 +942,7 @@ function catchy(f) {
                         plugins.dispatch('/systemlogs', {params:params, action:'push_message_deactivated', data:message});
 
                         let sg = new S.StoreGroup(common.db);
-                        sg.clear(new N.Note(message)).then(() => {
+                        sg.clearNote(new N.Note(message)).then(() => {
                             log.i('Cleared scheduled notifications for %s', message._id);
                         }, err => {
                             log.w('Error while clearing scheduled notifications for %s: %j', message._id, err.stack || err);
@@ -963,7 +979,7 @@ function catchy(f) {
                 } else if (mime === 'data:application/x-pkcs8') {
                     detected = C.CRED_TYPE[N.Platform.IOS].TOKEN;
                 } else if (mime === 'data:') {
-                    var error = C.check_token(data.file.substring(data.file.indexOf(',') + 1), data.pass);
+                    var error = C.check_token(data.file.substring(data.file.indexOf(',') + 1), [data.key, data.team, data.bundle].join('[CLY]'));
                     if (error) {
                         return resolve('Push: ' + (typeof error === 'string' ? error : error.message || error.code || JSON.stringify(error)));
                     }
@@ -1156,9 +1172,9 @@ function catchy(f) {
     api.onCohortDelete = (_id, app_id, ack) => {
         return new Promise((resolve, reject) => {
             if (ack) {
-                common.dbPromise('messages', 'update', {auto: true, $bitsAllSet: {'result.status': N.Status.Scheduled}, autoCohorts: _id}, {$bit: {'result.status': {and: ~N.Status.Scheduled}}}).then(() => resolve(ack), reject);
+                common.dbPromise('messages', 'update', {auto: true, 'result.status': {$bitsAllSet: N.Status.Scheduled}, autoCohorts: _id}, {$bit: {'result.status': {and: ~N.Status.Scheduled}}}).then(() => resolve(ack), reject);
             } else {
-                common.db.collection('messages').count({auto: true, $bitsAllSet: {'result.status': N.Status.Scheduled}, autoCohorts: _id}, (err, count) => {
+                common.db.collection('messages').count({auto: true, 'result.status': {$bitsAllSet: N.Status.Scheduled}, autoCohorts: _id}, (err, count) => {
                     if (err) {
                         log.e('[auto] Error while loading messages: %j', err);
                         reject(err);

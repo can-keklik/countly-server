@@ -441,7 +441,7 @@ table { border-collapse: collapse; }
 #app-management-bar .nav-search input { transition:width 200ms; }
 #app-management-bar.expand .nav-search input { width:278px; transition:width 200ms; }
 
-#management-app-container { max-height: 490px; }
+#management-app-container { max-height: 450px; }
 #manage-new-app { display: none; }
 .app-details input { width:310px; }
 #add-new-app .hint, .app-details .hint { padding-top: 8px; font-size:11px; color:#B7B6B6; clear: both; }
@@ -658,7 +658,8 @@ div.datatablesubrow {display: none;}
 .sticky-header.hide { display:none; }
 .sticky-header { top:0; position:fixed; }
 .sticky-header table { border:none; border-radius:0; }
-.sticky-header table th { box-shadow: inset 0 -1px 0 0 #d0d0d0; border-bottom: none; outline: none; cursor: default; }
+.sticky-header table th { box-shadow: inset 0 -1px 0 0 #d0d0d0; border-bottom: none; outline: none; cursor: default; position:relative; cursor:pointer;}
+.sticky-header table th.sorting_disabled { cursor:auto; }
 .sticky-header table th:first-child { box-shadow: inset 0 -1px 0 0 #d0d0d0, inset 1px 0 0 0 #d0d0d0; }
 .sticky-header table th:last-child { box-shadow: inset 0 -1px 0 0 #d0d0d0, inset -1px 0 0 0 #d0d0d0; }
 
@@ -2065,6 +2066,9 @@ input.custom-styled-green-check:checked {border-color: #C2C2C2;}
     margin-bottom: 0;
     border: 1px solid #D0D0D0;
     border-width: 1px 0 0 0;
+}
+
+.app-details-plugins > div > form.ui-accordion-content.ui-widget-content.ui-accordion-content-active.overflow-visible {
     overflow: visible !important;
 }
 
@@ -2077,7 +2081,6 @@ input.custom-styled-green-check:checked {border-color: #C2C2C2;}
 
 .mgmt-plugins h4 {
     color: #2FA732;
-    font-size: 13px;
     padding: 1em 3em;
     border-top: 1px solid #D0D0D0;
     font-size: 15px;
@@ -2123,6 +2126,9 @@ input.custom-styled-green-check:checked {border-color: #C2C2C2;}
     padding-top: 10px;
     display: block;
     line-height: 17px;
+}
+.mgmt-plugins-row span > span {
+    display: inline-block;
 }
 .mgmt-plugins-row .on-off-switch span.text {
     padding:0;
@@ -2196,6 +2202,7 @@ h4 + .mgmt-plugins-row {
     padding: 5px;
     border: 1px solid #D0D0D0;
     width: 274px;
+    z-index: 0;
 }
 
 .mgmt-plugins-row .selectize-dropdown [data-selectable] {
@@ -2332,6 +2339,8 @@ h4 + .mgmt-plugins-row {
 {
      border-radius: 2px; border: 1px solid #d6d6d6; outline: none; padding: 7px; font-size: 12px; height: 50px; width: 100%; box-sizing: border-box;
 }
+.token-menu {display:none;}
+.token-menu.active {display:block;}
 #token-manager-view .dataTable-top .server-export {display:none;}
 #token-manager-view table tr td:nth-child(2){width: 100px;}
 #token-manager-view table tr td:nth-child(6){width: 70px;}

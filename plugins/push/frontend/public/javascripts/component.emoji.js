@@ -31,12 +31,14 @@ window.component('emoji', function(emoji) {
 				return false;
 			}
 		},
-		appendCustom = function(ctrl, dom){
-			var range; 
+		appendCustom = function(ctrl, dom, append){
+			var range, open = !dom; 
 
 			if (!dom) {
 				dom = document.createElement('span');
-				range = window.getSelection().getRangeAt(0);
+				if (!append) {
+					range = window.getSelection().getRangeAt(0);
+				}
 			}
 
 			dom.setAttribute('contenteditable', 'false');
@@ -60,6 +62,10 @@ window.component('emoji', function(emoji) {
 					}
 				}
 
+				if (ctrl.picker() && ctrl.picker().picker_open) {
+					ctrl.picker().picker_open = false;
+				}
+
 				OPEN = ctrl;
 				OPEN_CUST = dom;
 				ctrl.persOpen(true);
@@ -72,20 +78,33 @@ window.component('emoji', function(emoji) {
 			if (range) {
 				range.deleteContents();
 				range.insertNode(dom);
+			} else if (append && !dom.parentNode) {
+				ctrl.element.appendChild(dom);
+			}
+
+			if (dom.parentNode.className === 'pers') {
+				var p = dom.parentNode;
+				p.removeChild(dom);
+				p.parentNode.appendChild(dom);
 			}
 
 			OPEN = ctrl;
 			OPEN_CUST = dom;
 			resetCustom();
-			ctrl.persOpen(true);
-			ctrl.persPanel.className = 'pers-panel open centered';
-			ctrl.persPanel.style.right = (dom.parentNode.clientWidth - dom.offsetWidth / 2 - dom.offsetLeft - 340 / 2 - 18) + 'px';
-			ctrl.persPanel.style.top = (dom.offsetHeight + dom.offsetTop + 7) + 'px';
+			ctrl.persOpen(open);
+			if (ctrl.persPanel) {
+				ctrl.persPanel.className = 'pers-panel ' + (open ? 'open' : '') + ' centered';
+				ctrl.persPanel.style.right = (dom.parentNode.clientWidth - dom.offsetWidth / 2 - dom.offsetLeft - 340 / 2 - 18) + 'px';
+				ctrl.persPanel.style.top = (dom.offsetHeight + dom.offsetTop + 7) + 'px';
+			}
 		},
 
 		resetCustom = function(){
-			OPEN.closeElement.style.display = 'none';
 			if (OPEN_CUST) {
+				if (OPEN.closeElement) {
+					OPEN.closeElement.style.display = 'none';
+				}
+	
 				var f = falValue(),
 					c = capValue(),
 					k = keyValue();
@@ -97,8 +116,12 @@ window.component('emoji', function(emoji) {
 					}
 					OPEN_CUST.innerHTML = title + ' | ' + (f || '');
 					OPEN_CUST.className = 'pers';
-					if (f) {
-						OPEN.valueHTML(OPEN.element.innerHTML);
+					if (f && OPEN.picker().editor) {
+						var html = OPEN.element.innerHTML;
+						if (html === '<br>') {
+							html = '';
+						}
+						OPEN.valueHTML(html);
 						OPEN.value(OPEN.picker().getText());
 						OPEN.valuePers(OPEN.getPersonalization());
 						OPEN.valuePersDef(OPEN.getPersonalizationDef());
@@ -110,10 +133,16 @@ window.component('emoji', function(emoji) {
 					OPEN_CUST.className = 'pers placeholder';
 				}
 
-				OPEN.valueHTML(OPEN.element.innerHTML);
-				OPEN.value(OPEN.picker().getText());
-				OPEN.valuePers(OPEN.getPersonalization(OPEN_CUST));
-				OPEN.valuePersDef(OPEN.getPersonalizationDef(OPEN_CUST));
+				if (OPEN.picker().editor) {
+					var html = OPEN.element.innerHTML;
+					if (html === '<br>') {
+						html = '';
+					}
+					OPEN.valueHTML(html);
+					OPEN.value(OPEN.picker().getText());
+					OPEN.valuePers(OPEN.getPersonalization(OPEN_CUST));
+					OPEN.valuePersDef(OPEN.getPersonalizationDef(OPEN_CUST));
+				}
 			}
 		},
 
@@ -168,6 +197,7 @@ window.component('emoji', function(emoji) {
 		this.valueHTML = typeof opts.valueHTML === 'function' ? opts.valueHTML : m.prop(opts.valueHTML);
 		this.valuePers = typeof opts.valuePers === 'function' ? opts.valuePers : m.prop(opts.valuePers);
 		this.valuePersDef = typeof opts.valuePersDef === 'function' ? opts.valuePersDef : m.prop(opts.valuePersDef);
+		this.valueCompiled = opts.valueCompiled;
 		
 		this.getPersonalization = function(exclude) {
 			var ret = {}, index = 0;
@@ -230,6 +260,10 @@ window.component('emoji', function(emoji) {
 		});
 		this.inputClick = function(){
 			if (OPEN) {
+				if (!OPEN_CUST.parentNode) {
+					OPEN = OPEN_CUST = undefined;
+					return;
+				}
 				if (isInvalid(OPEN, OPEN_CUST)) {
 					return;
 				}
@@ -246,6 +280,7 @@ window.component('emoji', function(emoji) {
 					return;
 				}
 
+				OPEN.persPanel.className = 'pers-panel centered asd';
 				OPEN.persOpen(undefined);
 				OPEN = OPEN_CUST = undefined;
 			}
@@ -269,6 +304,10 @@ window.component('emoji', function(emoji) {
 		this.persBtnClick = function(opt, ev){
 			ev.preventDefault();
 			if (OPEN) {
+				if (!OPEN_CUST.parentNode) {
+					OPEN = OPEN_CUST = undefined;
+					return;
+				}
 				if (isInvalid(OPEN, OPEN_CUST)) {
 					return;
 				}
@@ -281,6 +320,10 @@ window.component('emoji', function(emoji) {
 				}
 			}
 
+			if (this.picker() && this.picker().picker_open) {
+				this.picker().picker_open = false;
+			}
+
 			var target = window.getSelection().anchorNode;
 			while (target.parentNode) {
 				if (target === this.element) {
@@ -288,6 +331,10 @@ window.component('emoji', function(emoji) {
 				} else {
 					target = target.parentNode;
 				}
+			}
+
+			if (!OPEN) {
+				appendCustom(this, null, true);
 			}
 		}.bind(this);
 	};
@@ -298,33 +345,41 @@ window.component('emoji', function(emoji) {
 				config: function(element, isInitialized) {
 					if (!isInitialized) {
 						ctrl.element = element;
-						var v = ctrl.value();
-						if (v) {
-							element.innerHTML = ctrl.valueHTML() || v;
+						if (ctrl.valueCompiled()) {
+							element.innerHTML = ctrl.valueHTML() || ctrl.valueCompiled();
 							element.querySelectorAll('.pers').forEach(function(el){
 								appendCustom(ctrl, el);
 							});
 						}
 						ctrl.picker().listenOn(element.parentElement.querySelector('a.fa-smile-o'), element.parentElement, element);
-					} else if (ctrl.forcefocus() && ctrl.value() !== ctrl.picker().getText()) {
-						element.focus();
-						if (typeof window.getSelection != 'undefined' && typeof document.createRange != 'undefined') {
-							var range = document.createRange();
-							range.selectNodeContents(element);
-							range.collapse(false);
-							var sel = window.getSelection();
-							sel.removeAllRanges();
-							sel.addRange(range);
-						} else if (typeof document.body.createTextRange != 'undefined') {
-							var textRange = document.body.createTextRange();
-							textRange.moveToElementText(element);
-							textRange.collapse(false);
-							textRange.select();
-						}					
+					} else if (ctrl.forcefocus()) {
+						if (!ctrl.picker().editor) {
+							ctrl.picker().listenOn(element.parentElement.querySelector('a.fa-smile-o'), element.parentElement, element);
+						}
+						if (ctrl.value() !== ctrl.picker().getText()) {
+							element.focus();
+							if (typeof window.getSelection != 'undefined' && typeof document.createRange != 'undefined') {
+								var range = document.createRange();
+								range.selectNodeContents(element);
+								range.collapse(false);
+								var sel = window.getSelection();
+								sel.removeAllRanges();
+								sel.addRange(range);
+							} else if (typeof document.body.createTextRange != 'undefined') {
+								var textRange = document.body.createTextRange();
+								textRange.moveToElementText(element);
+								textRange.collapse(false);
+								textRange.select();
+							}					
+						}
 					}
 				}, 
 				oninput: function(){
-					ctrl.valueHTML(this.innerHTML);
+					var html = this.innerHTML;
+					if (html === '<br>') {
+						html = '';
+					}
+					ctrl.valueHTML(html);
 					ctrl.value(ctrl.picker().getText());
 					ctrl.valuePers(ctrl.getPersonalization());
 					ctrl.valuePersDef(ctrl.getPersonalizationDef());
@@ -336,7 +391,11 @@ window.component('emoji', function(emoji) {
 				},
 				onkeyup: function(){
 					if (ctrl.value() !== ctrl.picker().getText()) {
-						ctrl.valueHTML(this.innerHTML);
+						var html = this.innerHTML;
+						if (html === '<br>') {
+							html = '';
+						}
+						ctrl.valueHTML(html);
 						ctrl.value(ctrl.picker().getText());
 					}
 					ctrl.valuePers(ctrl.getPersonalization());
@@ -353,12 +412,13 @@ window.component('emoji', function(emoji) {
 				// onblur: ctrl.focus.bind(ctrl, false),
 			}, !ctrl.value() && !Object.keys(ctrl.getPersonalization()).length && !ctrl.forcefocus() ? 
 				m('div.placeholder', {
+					key: 'pl' + Math.random(),
 					config: function(el) {
 						el.innerHTML = typeof ctrl.opts.placeholder === 'function' ? ctrl.opts.placeholder() : ctrl.opts.placeholder || '';
 					}
 				}) 
 				: undefined),
-			ctrl.persOpts ? m('a.pers', {onmousedown: ctrl.persBtnClick.bind(ctrl, null)}, '{{') : '',
+			ctrl.persOpts ? m('a.pers', {title: t('pu.po.tt.pers'), config: C.tooltip.configF, onmousedown: ctrl.persBtnClick.bind(ctrl, null)}, '{{') : '',
 			ctrl.persOpts ? m('.pers-panel.centered', {class: (ctrl.persOpen() ? 'open' : ''), config: function(el){ ctrl.persPanel = el; }}, [
 				m('label', t('pu.po.tab2.variable')),
 				C.singleselect.view(ctrl.persCtrl),
@@ -369,11 +429,11 @@ window.component('emoji', function(emoji) {
 				m('input[type=text]', {value: falValue(), oninput: m.withAttr('value', falValue), placeholder: t('pu.po.tab2.fallpl')}),
 				m('.help', t('pu.po.tab2.help')),
 				m('.btns', [
-					m('a.btn.close[href=#]', {config: function(el){ ctrl.closeElement = el; }, onclick: ctrl.closeBtnClick}, t('pu.po.close')),
-					m('a.btn.delete[href=#]', {onclick: ctrl.deleteBtnClick}, t('pu.po.delete')),
+					m('a.delete[href=#]', {onclick: ctrl.deleteBtnClick}, t('pu.po.delete')),
+					m('a.close.icon-button.light[href=#]', {config: function(el){ ctrl.closeElement = el; }, onclick: ctrl.closeBtnClick}, t('pu.po.close')),
 				])
 			]) : '',
-			m('a.fa.fa-smile-o')
+			m('a.fa.fa-smile-o', C.tooltip.config(t('pu.po.tt.emoji')))
 		]);
 	};
 });

@@ -1,3 +1,5 @@
+/* jshint ignore:start */
+
 const J = require('../../../../api/parts/jobs/job.js'),
     R = require('../../../../api/parts/jobs/retry.js'),
     Resource = require('../parts/res.js'),
@@ -5,17 +7,18 @@ const J = require('../../../../api/parts/jobs/job.js'),
     Loader = require('../parts/store.js').Loader,
     N = require('../parts/note.js');
 
-var log = log = require('../../../../api/utils/log.js')('job:push:process/' + process.pid);
+var log = require('../../../../api/utils/log.js')('job:push:process/' + process.pid);
 
 const FORK_WHEN_MORE_THAN = 100000,
     FORK_MAX = 5,
-    SEND_AHEAD = 5 * 60000;
+    SEND_AHEAD = 5 * 60000,
+    BATCH = 50000;
 
 class ProcessJob extends J.IPCJob {
     constructor(name, data) {
         super(name, data);
         if (this.isFork) {
-            log = require('../../../../api/utils/log.js')('job:push:process/' + process.pid + '/' + this.fork);
+            log = require('../../../../api/utils/log.js')('job:push:process/' + process.pid + '/' + this.data.fork);
         }
         log.d('initializing ProcessJob with %j & %j', name, data);
     }
@@ -72,13 +75,16 @@ class ProcessJob extends J.IPCJob {
     }
 
     reschedule (date) {
-        return require('../../../../api/parts/jobs').job('push:process', this.data).replace().once(date);
+        return this.replaceAfter(date);
     }
 
     fork () {
+        if (!this.maxFork) {
+            this.maxFork = 0;
+        }
         let data = Object.assign({}, this.data);
-        data.fork = true;
-        return require('../../../../api/parts/jobs').job('push:process', data).now();
+        data.fork = ++this.maxFork;
+        return ProcessJob.insert(this.db(), {name: this.name, status: 0, data: data, next: Date.now()});
     }
 
     now () {
@@ -86,22 +92,44 @@ class ProcessJob extends J.IPCJob {
     }
 
     compile (notes, msgs) {
-        let pm, pn, pp, po;
+        // let pm, pn, pp, po;
 
         return msgs.map(m => {
             let note = notes[m.n.toString()];
             if (note) {
-                if (pn && pn === note && pp === m.p && po === m.o) {
-                    m.m = pm;
-                } else {
-                    pn = note;
-                    pp = m.p;
-                    po = m.o;
-                    pm = m.m = note.compile(this.platform, m);
-                }
+                m.m = note.compile(this.platform, m);
+                // if (pn && pn === note && pp === m.p && po === m.o) {
+                //     m.m = pm;
+                // } else {
+                //     pn = note;
+                //     pp = m.p;
+                //     po = m.o;
+                //     pm = m.m = note.compile(this.platform, m);
+                // }
             }
             return m;
         }).filter(m => !!m.m);
+    }
+
+    async _finish (err) {
+        if (err) {
+            let counts = await this.loader.counts(Date.now() + SEND_AHEAD, this._id);
+            if (counts.total) {
+                log.w('Not reloaded jobbed counts %j, reloading', counts);
+                let notes = await this.loader.notes(Object.keys(counts).filter(k => k !== 'total'));
+                await this.handleResults(err, Object.values(notes));
+                await this.loader.reload(this._id);
+            } else {
+                counts = await this.loader.counts(Date.now() + SEND_AHEAD);
+                if (counts.total) {
+                    log.w('Not reloaded not-jobbed counts %j, reloading', counts);
+                    let notes = await this.loader.notes(Object.keys(counts).filter(k => k !== 'total'));
+                    await this.handleResults(err, Object.values(notes));
+                }
+            }
+        }
+
+        return await super._finish(err);
     }
 
     async run (db, done) {
@@ -143,7 +171,7 @@ class ProcessJob extends J.IPCJob {
                 }
 
                 // load next batch
-                let msgs = await this.loader.load(this._id, date);
+                let msgs = await this.loader.load(this._id, date, BATCH);
 
                 // no messages left, break from the loop
                 if (!msgs.length) {
@@ -169,7 +197,7 @@ class ProcessJob extends J.IPCJob {
                                 try {
                                     s[2] = s[1] === -200 ? undefined : JSON.parse(s[2]).reason;
                                 } catch (e) {
-                                    log.e('[%s:%d]: Error parsing error from APNS: %j, %j', process.pid, this.anote.id, e, e.stack);
+                                    log.e('Error parsing error from APNS: %j, %j', s[2], e.stack || e);
                                 }
                             }
                         });
@@ -355,10 +383,10 @@ class ProcessJob extends J.IPCJob {
                 count = await this.loader.count(this.now());
 
                 // fork if parallel processing needed
-                if (!resourceError && count > FORK_WHEN_MORE_THAN) {
-                    for (let i = 0; i < Math.min(Math.ceil(count / FORK_WHEN_MORE_THAN), FORK_MAX); i++) {
+                if (!this.maxFork && !resourceError && count > FORK_WHEN_MORE_THAN) {
+                    for (let i = 0; i < Math.min(Math.floor(count / FORK_WHEN_MORE_THAN), FORK_MAX); i++) {
                         log.i('Forking %d since %d > %d', i, count, FORK_WHEN_MORE_THAN);
-                        this.fork();
+                        await this.fork();
                     }
                 }
 
@@ -407,60 +435,7 @@ class ProcessJob extends J.IPCJob {
                 }));
             }
 
-            // in case main job ends with resource error, record it in all messages affected
-            // when too much same errors gathered in messages within retry period of 30 minutes, don't reschedule this process job
-            let skip = false,
-                error = resourceError ? resourceError.code || resourceError.message || (typeof resourceError === 'string' && resourceError) || JSON.stringify(resourceError) : undefined,
-                date = this.now(),
-                max = 0;
-
-            if (!this.isFork) {
-                if (affected && affected.length) {
-                    await Promise.all(affected.map(note => this.loader.updateNote(note._id, {
-                        $bit: {'result.status': {or: N.Status.Error}}, 
-                        $push: {'result.resourceErrors': {$each: [{date: date, field: this.field, error: error}], $slice: -5}}
-                        // $addToSet: {'result.resourceErrors': {date: date, field: this.field, error: error}}
-                    }).then(() => {
-                        let same = (note.result.resourceErrors || []).filter(r => r.field === this.field && r.error === error),
-                            recent = same.filter(r => (this.now() - r.date) < 30 * 60000);
-
-                        if (recent.length) {
-                            max = Math.max(max, Math.max(...recent.map(r => this.now() - r.date)));
-                        }
-
-                        if (recent.length >= 2) {
-                            skip = note._id;
-                        }
-                    }, err => {
-                        log.e('Error while updating note %s with resourceError %s: %j', note._id, error, err);
-                    })));
-                }
-            }
-
-            if (skip) {
-                log.w('Won\'t reschedule %s since resourceError repeated 3 times within 30 minutes for %s', this._id, skip);
-                let counts = await this.loader.counts(),
-                    ids = Object.keys(counts).filter(n => n !== 'total');
-                if (counts.total) {
-                    log.w('Aborting all notifications from %s collection: %j', this.loader.collectionName, ids);
-                    await Promise.all(ids.map(id => this.loader.abortNote(id, counts[id], date, this.field, error)));
-                    // await this.loader.clear();
-                }
-            } else {
-                // reschedule job if needed with exponential backoff:
-                // first time it's rescheduled for 1 minute later, then for 3 minutes later, then 9, totalling 13 minutes
-                // when message is rescheduled from dashboard, this logic can result in big delays between attempts, but no more than 90 minutes
-                let next = resourceError ? this.now() + (max ? max * 3 : 1 * 60000) : await this.loader.next();
-                if (next) {
-                    log.i('Rescheduling %s to %d', this.cid, next);
-                    if (resourceError && affected && affected.length) {
-                        log.i('Resetting nextbatch of %j to %d', affected.map(n => n._id), next);
-                        this.loader.updateNotes({_id: {$in: affected.map(n => n._id)}, 'result.nextbatch': {$or: [{$exists: false}, {$eq: null}, {$lt: next}]}}, {$set: {'result.nextbatch': next}})
-                            .catch(log.e.bind(log, 'Error while updating note nextbatch: %j'));
-                    }
-                    await this.reschedule(next);
-                }
-            }
+            await this.handleResults(resourceError, affected || []);
 
             // once out of while loop, we're done
             done(resourceError);
@@ -473,6 +448,77 @@ class ProcessJob extends J.IPCJob {
                 log.e('Error when reloading for %s: %j', this._id, e);
             }
             done(e);
+        }
+    }
+
+    async handleResults(resourceError, affected) {
+        // in case main job ends with resource error, record it in all messages affected
+        // when too much same errors gathered in messages within retry period of 30 minutes, don't reschedule this process job
+        let skip = false,
+            error = resourceError ? resourceError.code || resourceError.message || (typeof resourceError === 'string' && resourceError) || JSON.stringify(resourceError) : undefined,
+            date = this.now(),
+            max = 0;
+
+        if (this.isFork) {
+            return false;
+        }
+
+        log.d('Handling results of %s: error %j, %d affected', this.id, resourceError, affected.length);
+
+        if (affected && affected.length) {
+            await Promise.all(affected.map(note => this.loader.updateNote(note._id, {
+                $bit: {'result.status': {or: N.Status.Error}}, 
+                $push: {'result.resourceErrors': {$each: [{date: date, field: this.field, error: error}], $slice: -5}}
+                // $addToSet: {'result.resourceErrors': {date: date, field: this.field, error: error}}
+            }).then(() => {
+                let same = (note.result.resourceErrors || []).filter(r => r.field === this.field && r.error === error),
+                    recent = same.filter(r => (this.now() - r.date) < 30 * 60000);
+
+                if (recent.length) {
+                    max = Math.max(max, Math.max(...recent.map(r => this.now() - r.date)));
+                }
+
+                if (recent.length >= 2) {
+                    skip = note._id;
+                }
+            }, err => {
+                log.e('Error while updating note %s with resourceError %s: %j', note._id, error, err);
+            })));
+        }
+
+        if (skip) {
+            log.w('Won\'t reschedule %s since resourceError repeated 3 times within 30 minutes for %s', this._id, skip);
+            let counts = await this.loader.counts(),
+                ids = Object.keys(counts).filter(n => n !== 'total');
+            if (counts.total) {
+                log.w('Aborting all notifications from %s collection: %j', this.loader.collectionName, ids);
+                await Promise.all(ids.map(id => this.loader.abortNote(id, counts[id], date, this.field, error)));
+                // await this.loader.clear();
+            }
+        } else {
+            // reschedule job if needed with exponential backoff:
+            // first time it's rescheduled for 1 minute later, then for 3 minutes later, then 9, totalling 13 minutes
+            // when message is rescheduled from dashboard, this logic can result in big delays between attempts, but no more than 90 minutes
+            let next = resourceError ? this.now() + (max ? max * 3 : 1 * 60000) : await this.loader.next();
+            if (next) {
+                log.i('Rescheduling %s to %d', this.cid, next);
+                if (resourceError && affected && affected.length) {
+                    log.i('Resetting nextbatch of %j to %d', affected.map(n => n._id), next);
+                    let q = {
+                        $and: [
+                            {_id: {$in: affected.map(n => n._id)}},
+                            {$or: [
+                                {'result.nextbatch': {$exists: false}}, 
+                                {'result.nextbatch': {$eq: null}}, 
+                                {'result.nextbatch': {$lt: next}}
+                            ]}
+                        ]
+                    };
+                    this.loader.updateNotes(q, {$set: {'result.nextbatch': next}}).catch(log.e.bind(log, 'Error while updating note nextbatch: %j'));
+                }
+                await this.reschedule(next);
+                return true;
+            }
         }
     }
 }

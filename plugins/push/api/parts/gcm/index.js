@@ -1,6 +1,6 @@
 'use strict';
 
-const log = require('../../../../../api/utils/log.js')('push:fcm' + process.pid),
+const log = require('../../../../../api/utils/log.js')('push:fcm/' + process.pid),
 	config = require('../../../../../api/config.js'),
 	https = require('https'),
 	EventEmitter = require('events');
@@ -39,7 +39,7 @@ class ConnectionResource extends EventEmitter {
 			};
 		} else {
 			this.options = {
-				hostname: 'android.googleapis.com',
+				hostname: 'gcm-http.googleapis.com',
 				port: 443,
 				path: '/gcm/send',
 				method: 'POST',
@@ -50,6 +50,8 @@ class ConnectionResource extends EventEmitter {
 				},
 			};
 		}
+
+		log.d('Options %j', this.options);
 
 		if (config.api.push_proxy) {
 			var Agent = require('./agent.js');
@@ -235,9 +237,10 @@ class ConnectionResource extends EventEmitter {
 							ids[i][2] = result.error;
 						}
 					});
-
-					this.statuses = this.statuses.concat(ids);
 				}
+
+				this.statuses = this.statuses.concat(ids);
+				log.d("statuses %j", this.statuses);
 
 				this.serviceImmediate();
 			} catch (e) {
