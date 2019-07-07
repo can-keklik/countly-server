@@ -41,7 +41,7 @@
                             timeout = setTimeout(function() {
                                 $(element).find('.select-items').prepend("<div class='table-loader' style='top:-1px'></div>");
                                 self.searchKey = key;
-                                self.onSearch(key);
+                                self.onSearch(key, $(element).find('.select-items').is(':visible'));
                             }, 1000);
                         });
                     });
