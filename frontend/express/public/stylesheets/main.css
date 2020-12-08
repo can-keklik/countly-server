@@ -2548,9 +2548,10 @@ h4 + .mgmt-plugins-row {
 
 .mgmt-plugins a.icon-button {
     float: right;
-    margin: 1em;
+    margin-right: 10px;
     position:relative;
-    top:-52px;
+    bottom: 4px;
+    color:#FFF;
 }
 
 .mgmt-plugins-row .selectize-input.items {
@@ -4298,6 +4299,7 @@ p.error_message_div {
     visibility: hidden;
     cursor: pointer;
     margin-right: 15px;
+    color: #6B6B6B;
   }
 
 
