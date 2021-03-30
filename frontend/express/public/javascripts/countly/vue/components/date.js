@@ -107,7 +107,10 @@
         globalMin = moment([2010, 0, 1]),
         globalMax = moment(),
         daysCursor = moment(globalMin.toDate()),
-        monthsCursor = moment(globalMin.toDate());
+        monthsCursor = moment(globalMin.toDate()),
+        globalMonthsCalendarIndex = {},
+        globalDaysCalendarIndex = {},
+        indexCursor = 1;
 
     while (daysCursor < globalMax) {
         globalDaysRange.push({
@@ -116,8 +119,10 @@
             key: daysCursor.unix()
         });
         daysCursor = daysCursor.add(1, "M");
+        globalDaysCalendarIndex[daysCursor.startOf("month").unix()] = indexCursor++;
     }
 
+    indexCursor = 1;
     while (monthsCursor < globalMax) {
         globalMonthsRange.push({
             date: monthsCursor.toDate(),
@@ -125,22 +130,31 @@
             key: monthsCursor.unix()
         });
         monthsCursor = monthsCursor.add(1, "Y");
+        globalMonthsCalendarIndex[monthsCursor.startOf("year").unix()] = indexCursor++;
     }
+
+    Object.freeze(globalMonthsRange);
+    Object.freeze(globalMonthsCalendarIndex);
+    Object.freeze(globalDaysRange);
+    Object.freeze(globalDaysCalendarIndex);
 
     function getInitialState(instance) {
         var formatter = null,
             tableType = "",
-            globalRange = null;
+            globalRange = null,
+            calendarIndex = {};
 
         if (instance.type === "monthrange") {
             formatter = "YYYY-MM";
             tableType = "month";
             globalRange = globalMonthsRange;
+            calendarIndex = globalMonthsCalendarIndex;
         }
         else {
             formatter = "YYYY-MM-DD";
             tableType = "date";
             globalRange = globalDaysRange;
+            calendarIndex = globalDaysCalendarIndex;
         }
 
         var state = {
@@ -168,7 +182,8 @@
             globalRange: globalRange,
             tableType: tableType,
             globalMin: globalMin,
-            globalMax: globalMax
+            globalMax: globalMax,
+            calendarIndex: calendarIndex
         };
 
         return _.extend(state, getDefaultInputState(formatter));
@@ -191,22 +206,10 @@
         components: {
             'el-date-table': ELEMENT.DateTable
         },
-        data: function() {
-            return {
-                visible: false
-            };
-        },
-        mixins: [ _mixins.inViewport ],
-        watch: {
-            'inViewport.now': function(visible) {
-                this.visible = visible;
-            }
-        },
         template: '<div class="cly-vue-daterp__date-table-wrapper" :class="[\'anchor-\' + dateMeta.key]">\
                         <span class="text-medium">{{ dateMeta.title }}</span>\
-                        <table-component v-if="visible" v-bind="$attrs" v-on="$listeners">\
+                        <table-component v-bind="$attrs" v-on="$listeners">\
                         </table-component>\
-                        <div v-if="!visible" style="height:180px"></div>\
                     </div>',
     };
 
@@ -400,12 +403,13 @@
                 }
                 var anchorClass = null;
                 if (this.tableType === "month") {
-                    anchorClass = ".anchor-" + moment(date).startOf("year").unix();
+                    anchorClass = moment(date).startOf("year").unix();
                 }
                 else {
-                    anchorClass = ".anchor-" + moment(date).startOf("month").unix();
+                    anchorClass = moment(date).startOf("month").unix();
                 }
-                this.$refs.vs.scrollIntoView(anchorClass);
+
+                this.$refs.scroller.scrollToItem(this.calendarIndex[anchorClass]);
             },
             abortPicking: function() {
                 if (this.rangeState.selecting) {
@@ -702,42 +706,44 @@
                                 </div>\
                                 <div class="cly-vue-daterp__calendars-wrapper">\
                                     <div class="cly-vue-daterp__table-wrap" :class="{\'is-start-focused\': isStartFocused, \'is-end-focused\': isEndFocused}" style="height: 248px" ref="calendarsViewport">\
-                                        <vue-scroll ref="vs" :ops="scrollOps">\
-                                            <div class="cly-vue-daterp__table-view" v-if="tableType === \'month\'">\
-                                                <month-table\
-                                                    v-for="item in globalRange"\
-                                                    :key="item.key"\
-                                                    :date-meta="item"\
-                                                    :in-viewport-requires-root="true"\
-                                                    :in-viewport-root="$refs.calendarsViewport"\
-                                                    selection-mode="range"\
-                                                    :date="item.date"\
-                                                    :min-date="minDate"\
-                                                    :max-date="maxDate"\
-                                                    :disabled-date="disabledDateFn"\
-                                                    :rangeState="rangeState"\
-                                                    @pick="handleRangePick"\
-                                                    @changerange="handleChangeRange">\
-                                                </month-table>\
-                                            </div>\
-                                            <div class="cly-vue-daterp__table-view" v-else>\
-                                                <date-table\
-                                                    v-for="item in globalRange"\
-                                                    :key="item.key"\
-                                                    :date-meta="item"\
-                                                    :in-viewport-requires-root="true"\
-                                                    :in-viewport-root="$refs.calendarsViewport"\
-                                                    selection-mode="range"\
-                                                    :date="item.date"\
-                                                    :min-date="minDate"\
-                                                    :max-date="maxDate"\
-                                                    :disabled-date="disabledDateFn"\
-                                                    :rangeState="rangeState"\
-                                                    @pick="handleRangePick"\
-                                                    @changerange="handleChangeRange">\
-                                                </date-table>\
-                                            </div>\
-                                        </vue-scroll>\
+                                            <recycle-scroller\
+                                                ref="scroller"\
+                                                style="height:248px"\
+                                                key-field="key"\
+                                                :items="globalRange"\
+                                                :item-size="248"\
+                                                class="scroller">\
+                                                <template v-slot="{ item }">\
+                                                    <div class="cly-vue-daterp__table-view" v-if="tableType === \'month\'">\
+                                                        <month-table\
+                                                            :key="item.key"\
+                                                            :date-meta="item"\
+                                                            selection-mode="range"\
+                                                            :date="item.date"\
+                                                            :min-date="minDate"\
+                                                            :max-date="maxDate"\
+                                                            :disabled-date="disabledDateFn"\
+                                                            :rangeState="rangeState"\
+                                                            @pick="handleRangePick"\
+                                                            @changerange="handleChangeRange">\
+                                                        </month-table>\
+                                                    </div>\
+                                                    <div class="cly-vue-daterp__table-view" v-else>\
+                                                        <date-table\
+                                                            :key="item.key"\
+                                                            :date-meta="item"\
+                                                            selection-mode="range"\
+                                                            :date="item.date"\
+                                                            :min-date="minDate"\
+                                                            :max-date="maxDate"\
+                                                            :disabled-date="disabledDateFn"\
+                                                            :rangeState="rangeState"\
+                                                            @pick="handleRangePick"\
+                                                            @changerange="handleChangeRange">\
+                                                        </date-table>\
+                                                    </div>\
+                                                </template>\
+                                            </recycle-scroller>\
                                     </div>\
                                 </div>\
                                 <div class="cly-vue-daterp__commit-section">\
