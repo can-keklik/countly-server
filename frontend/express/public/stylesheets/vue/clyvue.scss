@@ -8,6 +8,10 @@
         padding:59px 0 35px 0;
     }
 
+    #top-bar {
+        z-index: 2000;
+    }
+
     font-family: $--font-family !important;
 
     // tabs component
@@ -497,6 +501,12 @@
             }
         }
 
+        &__hidden-tabs {
+            .el-tabs__header {
+                display: none;
+            }
+        }
+
         .el-date-table {
             margin-top: 2px;
             tr:first-of-type {
@@ -943,18 +953,15 @@
 
     //drawer
     .cly-vue-drawer {
-        $drawer-width: 600px;
 
         position: fixed;
-        width: #{$drawer-width};
         height: 100%;
-        transform: translateX(#{$drawer-width * 2});
         transition: transform 0.3s;
         right: 0;
         top: 0;
-         background-color: #fcfcfc;
+        background-color: #fcfcfc;
         border-left: 1px solid #d0d0d0;
-        z-index: 10001;
+        z-index: 2000;
 
         .sidecars-view {
             background-color: #f3f3f3;
@@ -971,13 +978,20 @@
             height: 100%;
         }
 
+
+        //$drawer-width: 600px;
+
+        //width: #{$drawer-width};
+
+        transform: translateX(100%); // translateX(#{$drawer-width * 2});
+
         &.mounted {
-            transform: translateX(#{$drawer-width});
+            transform: translateX(100%); // translateX(#{$drawer-width});
         }
 
         &.has-sidecars {
-            width: #{$drawer-width * 2};
-            transform: translateX(#{$drawer-width * 2});
+            width: 100%; //#{$drawer-width * 2};
+            transform: translateX(100%); //translateX(#{$drawer-width * 2});
             .steps-view,
             .sidecars-view {
                 width: 50%;
@@ -2850,6 +2864,31 @@
         }
     }
 
+    .cly-vue-breakdown-tile {
+        &__wrapper {
+            height: 239px; 
+            border-right: 1px solid #DBDBDB; 
+            border-bottom: 1px solid #DBDBDB;
+           
+        }
+        &:nth-of-type(3n) {
+            .cly-vue-breakdown-tile__wrapper {
+                border-right: 0;
+            }
+        }
+        &__values-list {
+            height: 100%;
+            align-items: center;
+        }
+        &__item {
+            height: 33.3333333%;
+            padding: 15px 0px;
+        }
+        &__item-title {
+            padding: 5px 0px;
+        }
+    }
+
     .dropzone,
     .dropzone * {
         box-sizing: border-box;
@@ -3016,7 +3055,7 @@
 
 .cly-vue-tooltip {
     display: block !important;
-    z-index: 10000;
+    z-index: 100000;
     font-size: 12px;
 
     $tooltip_color: rgba(10, 10, 10, 0.8);

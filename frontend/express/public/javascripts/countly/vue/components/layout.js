@@ -79,20 +79,36 @@
         props: {
             title: String
         },
-        template: '<div class="bu-level bu-is-mobile header header--white">\
+        template: '<div class="header header--white">\
+                    <div class="bu-level bu-is-mobile">\
                         <div class="bu-level-left">\
-                            <slot name="header-left">\
-                                <div class="bu-level-item">\
+                            <div class="bu-level-item">\
+                                <slot name="header-top"></slot>\
+                            </div>\
+                        </div>\
+                    </div>\
+                    <div class="bu-level bu-is-mobile">\
+                        <div class="bu-level-left">\
+                            <div class="bu-level-item">\
+                                <slot name="header-left">\
                                     <h2>{{title}}</h2>\
-                                </div>\
-                            </slot>\
+                                </slot>\
+                            </div>\
                         </div>\
                         <slot></slot>\
                         <div class="bu-level-right">\
                             <slot name="header-right">\
                             </slot>\
                         </div>\
-                    </div>'
+                    </div>\
+                    <div class="bu-level bu-is-mobile">\
+                        <div class="bu-level-left">\
+                            <div class="bu-level-item">\
+                                <slot name="header-bottom"></slot>\
+                            </div>\
+                        </div>\
+                    </div>\
+                </div>'
     }));
 
     //Every view has a single cly-main component which encapsulates all other components/dom elements
@@ -109,10 +125,18 @@
     //Each cly-section should mark a different component within the cly-main component
     Vue.component("cly-section", countlyBaseComponent.extend({
         props: {
-            title: String
+            title: String,
+            autoGap: {
+                type: Boolean,
+                default: false
+            }
         },
-        template: '<div class="cly-vue-section bu-columns bu-is-gapless bu-is-multiline">\
-                        <div class="bu-column bu-is-full"><h4>{{title}}</h4></div>\
+        template: '<div class="cly-vue-section bu-columns bu-is-multiline" :class="{\' bu-is-gapless\': !autoGap}">\
+                        <div class="bu-column bu-is-full">\
+                            <slot name="header">\
+                                <h4>{{title}}</h4>\
+                            </slot>\
+                        </div>\
                         <div class="bu-column bu-is-full cly-vue-section__content">\
                             <slot></slot>\
                         </div>\

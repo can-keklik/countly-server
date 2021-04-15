@@ -1,4 +1,4 @@
-/* global Vue, ELEMENT, moment, countlyCommon, _ */
+/* global Vue, ELEMENT, moment, countlyCommon, _, CV */
 
 (function(countlyVue) {
 
@@ -54,6 +54,13 @@
             getRange: function() {
                 return [moment().startOf("year"), moment().endOf("year")];
             }
+        },
+        "0days": {
+            label: countlyVue.i18n("common.all-time"),
+            value: "0days",
+            getRange: function() {
+                return [moment([2010, 0, 1]), moment().endOf("year")];
+            }
         }
     };
 
@@ -70,7 +77,7 @@
             maxDateMM = now,
             maxDate = maxDateMM.toDate();
 
-        return {
+        var state = {
             // User input
             now: now,
             selectedShortcut: null,
@@ -78,7 +85,6 @@
             rangeMode: 'inBetween',
             minDate: minDate,
             maxDate: maxDate,
-            label: getRangeLabel([minDate, maxDate]),
             inBetweenInput: {
                 raw: {
                     textStart: minDateText,
@@ -100,6 +106,8 @@
                 parsed: [minDate, maxDate]
             },
         };
+        state.label = getRangeLabel(state);
+        return state;
     }
 
     var globalDaysRange = [],
@@ -116,7 +124,8 @@
         globalDaysRange.push({
             date: daysCursor.toDate(),
             title: daysCursor.format("MMMM YYYY"),
-            key: daysCursor.unix()
+            key: daysCursor.unix(),
+            anchorClass: "anchor-" + daysCursor.unix(),
         });
         daysCursor = daysCursor.add(1, "M");
         globalDaysCalendarIndex[daysCursor.startOf("month").unix()] = indexCursor++;
@@ -127,7 +136,8 @@
         globalMonthsRange.push({
             date: monthsCursor.toDate(),
             title: monthsCursor.format("YYYY"),
-            key: monthsCursor.unix()
+            key: monthsCursor.unix(),
+            anchorClass: "anchor-" + monthsCursor.unix(),
         });
         monthsCursor = monthsCursor.add(1, "Y");
         globalMonthsCalendarIndex[monthsCursor.startOf("year").unix()] = indexCursor++;
@@ -138,6 +148,11 @@
     Object.freeze(globalDaysRange);
     Object.freeze(globalDaysCalendarIndex);
 
+    /**
+     * Creates an initial state object 
+     * @param {Object} instance Instance configuration
+     * @returns {Object} Initial state object for datepicker
+     */
     function getInitialState(instance) {
         var formatter = null,
             tableType = "",
@@ -189,13 +204,33 @@
         return _.extend(state, getDefaultInputState(formatter));
     }
 
-    function getRangeLabel(value) {
-        var effectiveRange = [moment(value[0]), moment(value[1])];
-        if (effectiveRange[1] - effectiveRange[0] > 86400000) {
-            return effectiveRange[0].format("ll") + " - " + effectiveRange[1].format("ll");
+    /**
+     * Returns the range label for a given state object
+     * @param {Object} state Current state of datepicker
+     * @returns {String} Range label
+     */
+    function getRangeLabel(state) {
+
+        if (!state.rangeMode || state.rangeMode === 'inBetween') {
+            var effectiveRange = [moment(state.minDate), moment(state.maxDate)];
+            if (effectiveRange[1] - effectiveRange[0] > 86400000) {
+                return effectiveRange[0].format("ll") + " - " + effectiveRange[1].format("ll");
+            }
+            else {
+                return effectiveRange[0].format("lll") + " - " + effectiveRange[1].format("lll");
+            }
         }
-        else {
-            return effectiveRange[0].format("lll") + " - " + effectiveRange[1].format("lll");
+        else if (state.rangeMode === 'since') {
+            return CV.i18n('common.time-period-name.since', moment(state.minDate).format("ll"));
+        }
+        else if (state.rangeMode === 'inTheLast') {
+            var num = parseInt(state.inTheLastInput.raw.text, 10),
+                suffix = '';
+
+            if (num > 1) {
+                suffix = "-plural";
+            }
+            return CV.i18n('common.in-last-' + state.inTheLastInput.raw.level + suffix, num);
         }
     }
 
@@ -206,7 +241,7 @@
         components: {
             'el-date-table': ELEMENT.DateTable
         },
-        template: '<div class="cly-vue-daterp__date-table-wrapper" :class="[\'anchor-\' + dateMeta.key]">\
+        template: '<div class="cly-vue-daterp__date-table-wrapper" :class="dateMeta.anchorClass">\
                         <span class="text-medium">{{ dateMeta.title }}</span>\
                         <table-component v-bind="$attrs" v-on="$listeners">\
                         </table-component>\
@@ -432,7 +467,7 @@
         }
     };
 
-    Vue.component("cly-daterangepicker", countlyBaseComponent.extend({
+    Vue.component("cly-datepicker", countlyBaseComponent.extend({
         mixins: [
             _mixins.i18n,
             InputControlsMixin,
@@ -451,9 +486,20 @@
             },
             shortcuts: function() {
                 if (this.type === "daterange" && this.displayShortcuts) {
-                    return Object.keys(availableShortcuts).map(function(shortcutKey) {
-                        return availableShortcuts[shortcutKey];
-                    });
+                    var self = this;
+                    return Object.keys(availableShortcuts).reduce(function(acc, shortcutKey) {
+                        if (self.enabledShortcuts !== false) {
+                            if (self.enabledShortcuts.indexOf(shortcutKey) !== -1) {
+                                acc.push(availableShortcuts[shortcutKey]);
+                            }
+                        }
+                        else if (self.disabledShortcuts !== false) {
+                            if (self.disabledShortcuts.indexOf(shortcutKey) === -1) {
+                                acc.push(availableShortcuts[shortcutKey]);
+                            }
+                        }
+                        return acc;
+                    }, []);
                 }
                 return [];
             }
@@ -462,15 +508,42 @@
             value: [Object, String, Array],
             type: {
                 type: String,
-                default: "daterange"
+                default: "daterange",
+                validator: function(value) {
+                    return ['daterange', 'monthrange'].indexOf(value) !== -1;
+                }
             },
             displayShortcuts: {
                 type: Boolean,
                 default: true
             },
+            disabledShortcuts: {
+                type: [Array, Boolean],
+                default: false
+            },
+            enabledShortcuts: {
+                type: [Array, Boolean],
+                default: false
+            },
             placeholder: {type: String, default: 'Select'},
             disabled: { type: Boolean, default: false},
-            size: {type: String, default: 'small'}
+            size: {type: String, default: 'small'},
+            showRelativeModes: {type: Boolean, default: true },
+            offsetCorrection: {type: Boolean, default: true},
+            modelMode: {
+                type: String,
+                default: "mixed",
+                validator: function(value) {
+                    return ['mixed', 'absolute'].indexOf(value) !== -1;
+                }
+            },
+            timestampFormat: {
+                type: String,
+                default: 's',
+                validator: function(value) {
+                    return ['s', 'ms'].indexOf(value) !== -1;
+                }
+            }
         },
         data: function() {
             return getInitialState(this);
@@ -496,7 +569,7 @@
                 var changes = this.valueToInputState(value),
                     self = this;
 
-                changes.label = getRangeLabel([changes.minDate, changes.maxDate]);
+                changes.label = getRangeLabel(changes);
 
                 Object.keys(changes).forEach(function(fieldKey) {
                     self[fieldKey] = changes[fieldKey];
@@ -527,8 +600,8 @@
 
                 if (meta.type === "range") {
                     state.rangeMode = 'inBetween';
-                    state.minDate = new Date(meta.value[0] * 1000);
-                    state.maxDate = new Date(meta.value[1] * 1000);
+                    state.minDate = new Date(this.fixTimestamp(meta.value[0], "input"));
+                    state.maxDate = new Date(this.fixTimestamp(meta.value[1], "input"));
                     state.inBetweenInput = {
                         raw: {
                             textStart: moment(state.minDate).format(this.formatter),
@@ -539,7 +612,7 @@
                 }
                 else if (meta.type === "since") {
                     state.rangeMode = 'since';
-                    state.minDate = new Date(meta.value.since * 1000);
+                    state.minDate = new Date(this.fixTimestamp(meta.value.since, "input"));
                     state.maxDate = now;
                     state.sinceInput = {
                         raw: {
@@ -562,7 +635,7 @@
                 }
                 else if (availableShortcuts[value]) {
                     /*
-                        Shortcuts values should be mapped to a real date range if shortcuts are disabled. 
+                        Shortcuts values should be mapped to a real date range for the cases shortcuts are disabled. 
                     */
                     var effectiveShortcutRange = availableShortcuts[value].getRange();
                     state.rangeMode = 'inBetween';
@@ -602,22 +675,51 @@
             handleShortcutClick: function(value) {
                 this.selectedShortcut = value;
                 if (value) {
-                    this.doCommit(value);
+                    this.doCommit(value, true);
                 }
             },
             handleTabChange: function() {
                 this.abortPicking();
                 this.handleUserInputUpdate();
             },
+            fixTimestamp: function(value, mode) {
+                if (!this.offsetCorrection && this.timestampFormat === "ms") {
+                    return value;
+                }
+
+                var newValue = value;
+
+                if (this.timestampFormat === "s") {
+                    if (mode === "output") {
+                        newValue = Math.floor(value / 1000);
+                    }
+                    else { // mode === "input"
+                        newValue = value * 1000;
+                    }
+                }
+
+                if (this.offsetCorrection) {
+                    if (mode === "output") {
+                        newValue = newValue - countlyCommon.getOffsetCorrectionForTimestamp(newValue);
+                    }
+                    else { // mode === "input" 
+                        newValue = newValue + countlyCommon.getOffsetCorrectionForTimestamp(newValue);
+                    }
+                }
+                return newValue;
+            },
             handleConfirmClick: function() {
-                if (this.rangeMode === 'inBetween') {
-                    this.doCommit([Math.floor(this.minDate.valueOf() / 1000), Math.floor(this.maxDate.valueOf() / 1000)]);
+                if (this.rangeMode === 'inBetween' || this.modelMode === "absolute") {
+                    this.doCommit([
+                        this.fixTimestamp(this.minDate.valueOf(), "output"),
+                        this.fixTimestamp(this.maxDate.valueOf(), "output")
+                    ], false);
                 }
                 else if (this.rangeMode === 'since') {
-                    this.doCommit({ since: Math.floor(this.minDate.valueOf() / 1000) });
+                    this.doCommit({ since: this.fixTimestamp(this.minDate.valueOf(), "output") }, false);
                 }
                 else if (this.rangeMode === 'inTheLast') {
-                    this.doCommit(this.inTheLastInput.raw.text + this.inTheLastInput.raw.level);
+                    this.doCommit(this.inTheLastInput.raw.text + this.inTheLastInput.raw.level, false);
                 }
             },
             handleDiscardClick: function() {
@@ -629,9 +731,17 @@
             doDiscard: function() {
                 this.doClose();
             },
-            doCommit: function(value) {
-                if (this.value) {
+            doCommit: function(value, isShortcut) {
+                if (value) {
                     this.$emit("input", value);
+                    this.$emit("change", {
+                        effectiveRange: [
+                            this.fixTimestamp(this.minDate.valueOf(), "output"),
+                            this.fixTimestamp(this.maxDate.valueOf(), "output")
+                        ],
+                        isShortcut: isShortcut,
+                        value: value
+                    });
                     this.doClose();
                 }
             }
@@ -672,7 +782,7 @@
                                 </div>\
                             </div>\
                             <div class="cly-vue-daterp__calendars-col" v-if="customRangeSelection">\
-                                <div class="cly-vue-daterp__input-methods">\
+                                <div class="cly-vue-daterp__input-methods" :class="{\'cly-vue-daterp__hidden-tabs\': !showRelativeModes}">\
                                     <el-tabs v-model="rangeMode" @tab-click="handleTabChange">\
                                         <el-tab-pane name="inBetween">\
                                             <template slot="label"><span class="text-medium font-weight-bold">In Between</span></template>\
@@ -753,6 +863,26 @@
                             </div>\
                         </div>\
                     </cly-dropdown>',
+    }));
+
+    Vue.component("cly-datepicker-g", countlyBaseComponent.extend({
+        computed: {
+            globalDate:
+            {
+                get: function() {
+                    return this.$store.getters["countlyCommon/period"];
+                },
+                set: function(newVal) {
+                    countlyCommon.setPeriod(newVal);
+                }
+            }
+        },
+        methods: {
+            onChange: function() {
+                this.$root.$emit("cly-date-change");
+            }
+        },
+        template: '<cly-datepicker timestampFormat="ms" :disabled-shortcuts="[\'0days\']" modelMode="absolute" v-model="globalDate" @change="onChange"></cly-datepicker>'
     }));
 
 }(window.countlyVue = window.countlyVue || {}));

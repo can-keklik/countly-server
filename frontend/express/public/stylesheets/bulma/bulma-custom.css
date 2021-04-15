@@ -17,7 +17,8 @@ To customize and namespace classes follow -
 https://github.com/itsiprikshit/custom-bulma
 */
 
-.bu-level:not(:last-child) {
+.bu-level:not(:last-child),
+.bu-progress:not(:last-child) {
     margin-bottom: 1.5rem;
 }
 
@@ -1797,103 +1798,6 @@ https://github.com/itsiprikshit/custom-bulma
     }
 }
 
-.bu-level {
-    align-items: center;
-    justify-content: space-between;
-}
-.bu-level code {
-    border-radius: 4px;
-}
-.bu-level img {
-    display: inline-block;
-    vertical-align: top;
-}
-.bu-level.bu-is-mobile {
-    display: flex;
-}
-.bu-level.bu-is-mobile .bu-level-left,
-.bu-level.bu-is-mobile .bu-level-right {
-    display: flex;
-}
-.bu-level.bu-is-mobile .bu-level-left + .bu-level-right {
-    margin-top: 0;
-}
-.bu-level.bu-is-mobile .bu-level-item:not(:last-child) {
-    margin-bottom: 0;
-    margin-right: 0.75rem;
-}
-.bu-level.bu-is-mobile .bu-level-item:not(.bu-is-narrow) {
-    flex-grow: 1;
-}
-@media screen and (min-width: 769px), print {
-    .bu-level {
-        display: flex;
-    }
-    .bu-level > .bu-level-item:not(.bu-is-narrow) {
-        flex-grow: 1;
-    }
-}
-
-.bu-level-item {
-    align-items: center;
-    display: flex;
-    flex-basis: auto;
-    flex-grow: 0;
-    flex-shrink: 0;
-    justify-content: center;
-}
-.bu-level-item .bu-title,
-.bu-level-item .bu-subtitle {
-    margin-bottom: 0;
-}
-@media screen and (max-width: 768px) {
-    .bu-level-item:not(:last-child) {
-        margin-bottom: 0.75rem;
-    }
-}
-
-.bu-level-left,
-.bu-level-right {
-    flex-basis: auto;
-    flex-grow: 0;
-    flex-shrink: 0;
-}
-.bu-level-left .bu-level-item.bu-is-flexible,
-.bu-level-right .bu-level-item.bu-is-flexible {
-    flex-grow: 1;
-}
-@media screen and (min-width: 769px), print {
-    .bu-level-left .bu-level-item:not(:last-child),
-    .bu-level-right .bu-level-item:not(:last-child) {
-        margin-right: 0.75rem;
-    }
-}
-
-.bu-level-left {
-    align-items: center;
-    justify-content: flex-start;
-}
-@media screen and (max-width: 768px) {
-    .bu-level-left + .bu-level-right {
-        margin-top: 1.5rem;
-    }
-}
-@media screen and (min-width: 769px), print {
-    .bu-level-left {
-        display: flex;
-    }
-}
-
-.bu-level-right {
-    align-items: center;
-    justify-content: flex-end;
-}
-@media screen and (min-width: 769px), print {
-    .bu-level-right {
-        display: flex;
-    }
-}
-
 .bu-container {
     flex-grow: 1;
     margin: 0 auto;
@@ -2146,4 +2050,712 @@ https://github.com/itsiprikshit/custom-bulma
 
 .bu-is-flex-shrink-5 {
     flex-shrink: 5 !important;
+}
+
+.bu-level {
+    align-items: center;
+    justify-content: space-between;
+}
+.bu-level code {
+    border-radius: 4px;
+}
+.bu-level img {
+    display: inline-block;
+    vertical-align: top;
+}
+.bu-level.bu-is-mobile {
+    display: flex;
+}
+.bu-level.bu-is-mobile .bu-level-left,
+.bu-level.bu-is-mobile .bu-level-right {
+    display: flex;
+}
+.bu-level.bu-is-mobile .bu-level-left + .bu-level-right {
+    margin-top: 0;
+}
+.bu-level.bu-is-mobile .bu-level-item:not(:last-child) {
+    margin-bottom: 0;
+    margin-right: 0.75rem;
+}
+.bu-level.bu-is-mobile .bu-level-item:not(.bu-is-narrow) {
+    flex-grow: 1;
+}
+@media screen and (min-width: 769px), print {
+    .bu-level {
+        display: flex;
+    }
+    .bu-level > .bu-level-item:not(.bu-is-narrow) {
+        flex-grow: 1;
+    }
+}
+
+.bu-level-item {
+    align-items: center;
+    display: flex;
+    flex-basis: auto;
+    flex-grow: 0;
+    flex-shrink: 0;
+    justify-content: center;
+}
+.bu-level-item .bu-title,
+.bu-level-item .bu-subtitle {
+    margin-bottom: 0;
+}
+@media screen and (max-width: 768px) {
+    .bu-level-item:not(:last-child) {
+        margin-bottom: 0.75rem;
+    }
+}
+
+.bu-level-left,
+.bu-level-right {
+    flex-basis: auto;
+    flex-grow: 0;
+    flex-shrink: 0;
+}
+.bu-level-left .bu-level-item.bu-is-flexible,
+.bu-level-right .bu-level-item.bu-is-flexible {
+    flex-grow: 1;
+}
+@media screen and (min-width: 769px), print {
+    .bu-level-left .bu-level-item:not(:last-child),
+    .bu-level-right .bu-level-item:not(:last-child) {
+        margin-right: 0.75rem;
+    }
+}
+
+.bu-level-left {
+    align-items: center;
+    justify-content: flex-start;
+}
+@media screen and (max-width: 768px) {
+    .bu-level-left + .bu-level-right {
+        margin-top: 1.5rem;
+    }
+}
+@media screen and (min-width: 769px), print {
+    .bu-level-left {
+        display: flex;
+    }
+}
+
+.bu-level-right {
+    align-items: center;
+    justify-content: flex-end;
+}
+@media screen and (min-width: 769px), print {
+    .bu-level-right {
+        display: flex;
+    }
+}
+
+.bu-is-marginless {
+    margin: 0 !important;
+}
+
+.bu-is-paddingless {
+    padding: 0 !important;
+}
+
+.bu-m-0 {
+    margin: 0 !important;
+}
+
+.bu-mt-0 {
+    margin-top: 0 !important;
+}
+
+.bu-mr-0 {
+    margin-right: 0 !important;
+}
+
+.bu-mb-0 {
+    margin-bottom: 0 !important;
+}
+
+.bu-ml-0 {
+    margin-left: 0 !important;
+}
+
+.bu-mx-0 {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+}
+
+.bu-my-0 {
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+}
+
+.bu-m-1 {
+    margin: 0.25rem !important;
+}
+
+.bu-mt-1 {
+    margin-top: 0.25rem !important;
+}
+
+.bu-mr-1 {
+    margin-right: 0.25rem !important;
+}
+
+.bu-mb-1 {
+    margin-bottom: 0.25rem !important;
+}
+
+.bu-ml-1 {
+    margin-left: 0.25rem !important;
+}
+
+.bu-mx-1 {
+    margin-left: 0.25rem !important;
+    margin-right: 0.25rem !important;
+}
+
+.bu-my-1 {
+    margin-top: 0.25rem !important;
+    margin-bottom: 0.25rem !important;
+}
+
+.bu-m-2 {
+    margin: 0.5rem !important;
+}
+
+.bu-mt-2 {
+    margin-top: 0.5rem !important;
+}
+
+.bu-mr-2 {
+    margin-right: 0.5rem !important;
+}
+
+.bu-mb-2 {
+    margin-bottom: 0.5rem !important;
+}
+
+.bu-ml-2 {
+    margin-left: 0.5rem !important;
+}
+
+.bu-mx-2 {
+    margin-left: 0.5rem !important;
+    margin-right: 0.5rem !important;
+}
+
+.bu-my-2 {
+    margin-top: 0.5rem !important;
+    margin-bottom: 0.5rem !important;
+}
+
+.bu-m-3 {
+    margin: 0.75rem !important;
+}
+
+.bu-mt-3 {
+    margin-top: 0.75rem !important;
+}
+
+.bu-mr-3 {
+    margin-right: 0.75rem !important;
+}
+
+.bu-mb-3 {
+    margin-bottom: 0.75rem !important;
+}
+
+.bu-ml-3 {
+    margin-left: 0.75rem !important;
+}
+
+.bu-mx-3 {
+    margin-left: 0.75rem !important;
+    margin-right: 0.75rem !important;
+}
+
+.bu-my-3 {
+    margin-top: 0.75rem !important;
+    margin-bottom: 0.75rem !important;
+}
+
+.bu-m-4 {
+    margin: 1rem !important;
+}
+
+.bu-mt-4 {
+    margin-top: 1rem !important;
+}
+
+.bu-mr-4 {
+    margin-right: 1rem !important;
+}
+
+.bu-mb-4 {
+    margin-bottom: 1rem !important;
+}
+
+.bu-ml-4 {
+    margin-left: 1rem !important;
+}
+
+.bu-mx-4 {
+    margin-left: 1rem !important;
+    margin-right: 1rem !important;
+}
+
+.bu-my-4 {
+    margin-top: 1rem !important;
+    margin-bottom: 1rem !important;
+}
+
+.bu-m-5 {
+    margin: 1.5rem !important;
+}
+
+.bu-mt-5 {
+    margin-top: 1.5rem !important;
+}
+
+.bu-mr-5 {
+    margin-right: 1.5rem !important;
+}
+
+.bu-mb-5 {
+    margin-bottom: 1.5rem !important;
+}
+
+.bu-ml-5 {
+    margin-left: 1.5rem !important;
+}
+
+.bu-mx-5 {
+    margin-left: 1.5rem !important;
+    margin-right: 1.5rem !important;
+}
+
+.bu-my-5 {
+    margin-top: 1.5rem !important;
+    margin-bottom: 1.5rem !important;
+}
+
+.bu-m-6 {
+    margin: 3rem !important;
+}
+
+.bu-mt-6 {
+    margin-top: 3rem !important;
+}
+
+.bu-mr-6 {
+    margin-right: 3rem !important;
+}
+
+.bu-mb-6 {
+    margin-bottom: 3rem !important;
+}
+
+.bu-ml-6 {
+    margin-left: 3rem !important;
+}
+
+.bu-mx-6 {
+    margin-left: 3rem !important;
+    margin-right: 3rem !important;
+}
+
+.bu-my-6 {
+    margin-top: 3rem !important;
+    margin-bottom: 3rem !important;
+}
+
+.bu-p-0 {
+    padding: 0 !important;
+}
+
+.bu-pt-0 {
+    padding-top: 0 !important;
+}
+
+.bu-pr-0 {
+    padding-right: 0 !important;
+}
+
+.bu-pb-0 {
+    padding-bottom: 0 !important;
+}
+
+.bu-pl-0 {
+    padding-left: 0 !important;
+}
+
+.bu-px-0 {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
+
+.bu-py-0 {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+}
+
+.bu-p-1 {
+    padding: 0.25rem !important;
+}
+
+.bu-pt-1 {
+    padding-top: 0.25rem !important;
+}
+
+.bu-pr-1 {
+    padding-right: 0.25rem !important;
+}
+
+.bu-pb-1 {
+    padding-bottom: 0.25rem !important;
+}
+
+.bu-pl-1 {
+    padding-left: 0.25rem !important;
+}
+
+.bu-px-1 {
+    padding-left: 0.25rem !important;
+    padding-right: 0.25rem !important;
+}
+
+.bu-py-1 {
+    padding-top: 0.25rem !important;
+    padding-bottom: 0.25rem !important;
+}
+
+.bu-p-2 {
+    padding: 0.5rem !important;
+}
+
+.bu-pt-2 {
+    padding-top: 0.5rem !important;
+}
+
+.bu-pr-2 {
+    padding-right: 0.5rem !important;
+}
+
+.bu-pb-2 {
+    padding-bottom: 0.5rem !important;
+}
+
+.bu-pl-2 {
+    padding-left: 0.5rem !important;
+}
+
+.bu-px-2 {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+}
+
+.bu-py-2 {
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+}
+
+.bu-p-3 {
+    padding: 0.75rem !important;
+}
+
+.bu-pt-3 {
+    padding-top: 0.75rem !important;
+}
+
+.bu-pr-3 {
+    padding-right: 0.75rem !important;
+}
+
+.bu-pb-3 {
+    padding-bottom: 0.75rem !important;
+}
+
+.bu-pl-3 {
+    padding-left: 0.75rem !important;
+}
+
+.bu-px-3 {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+}
+
+.bu-py-3 {
+    padding-top: 0.75rem !important;
+    padding-bottom: 0.75rem !important;
+}
+
+.bu-p-4 {
+    padding: 1rem !important;
+}
+
+.bu-pt-4 {
+    padding-top: 1rem !important;
+}
+
+.bu-pr-4 {
+    padding-right: 1rem !important;
+}
+
+.bu-pb-4 {
+    padding-bottom: 1rem !important;
+}
+
+.bu-pl-4 {
+    padding-left: 1rem !important;
+}
+
+.bu-px-4 {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+}
+
+.bu-py-4 {
+    padding-top: 1rem !important;
+    padding-bottom: 1rem !important;
+}
+
+.bu-p-5 {
+    padding: 1.5rem !important;
+}
+
+.bu-pt-5 {
+    padding-top: 1.5rem !important;
+}
+
+.bu-pr-5 {
+    padding-right: 1.5rem !important;
+}
+
+.bu-pb-5 {
+    padding-bottom: 1.5rem !important;
+}
+
+.bu-pl-5 {
+    padding-left: 1.5rem !important;
+}
+
+.bu-px-5 {
+    padding-left: 1.5rem !important;
+    padding-right: 1.5rem !important;
+}
+
+.bu-py-5 {
+    padding-top: 1.5rem !important;
+    padding-bottom: 1.5rem !important;
+}
+
+.bu-p-6 {
+    padding: 3rem !important;
+}
+
+.bu-pt-6 {
+    padding-top: 3rem !important;
+}
+
+.bu-pr-6 {
+    padding-right: 3rem !important;
+}
+
+.bu-pb-6 {
+    padding-bottom: 3rem !important;
+}
+
+.bu-pl-6 {
+    padding-left: 3rem !important;
+}
+
+.bu-px-6 {
+    padding-left: 3rem !important;
+    padding-right: 3rem !important;
+}
+
+.bu-py-6 {
+    padding-top: 3rem !important;
+    padding-bottom: 3rem !important;
+}
+
+.bu-progress {
+    -moz-appearance: none;
+    -webkit-appearance: none;
+    border: none;
+    border-radius: 290486px;
+    display: block;
+    height: 1rem;
+    overflow: hidden;
+    padding: 0;
+    width: 100%;
+}
+.bu-progress::-webkit-progress-bar {
+    background-color: #ededed;
+}
+.bu-progress::-webkit-progress-value {
+    background-color: #4a4a4a;
+}
+.bu-progress::-moz-progress-bar {
+    background-color: #4a4a4a;
+}
+.bu-progress::-ms-fill {
+    background-color: #4a4a4a;
+    border: none;
+}
+.bu-progress.bu-is-white::-webkit-progress-value {
+    background-color: white;
+}
+.bu-progress.bu-is-white::-moz-progress-bar {
+    background-color: white;
+}
+.bu-progress.bu-is-white::-ms-fill {
+    background-color: white;
+}
+.bu-progress.bu-is-white:indeterminate {
+    background-image: linear-gradient(to right, white 30%, #ededed 30%);
+}
+.bu-progress.bu-is-black::-webkit-progress-value {
+    background-color: #0a0a0a;
+}
+.bu-progress.bu-is-black::-moz-progress-bar {
+    background-color: #0a0a0a;
+}
+.bu-progress.bu-is-black::-ms-fill {
+    background-color: #0a0a0a;
+}
+.bu-progress.bu-is-black:indeterminate {
+    background-image: linear-gradient(to right, #0a0a0a 30%, #ededed 30%);
+}
+.bu-progress.bu-is-light::-webkit-progress-value {
+    background-color: whitesmoke;
+}
+.bu-progress.bu-is-light::-moz-progress-bar {
+    background-color: whitesmoke;
+}
+.bu-progress.bu-is-light::-ms-fill {
+    background-color: whitesmoke;
+}
+.bu-progress.bu-is-light:indeterminate {
+    background-image: linear-gradient(to right, whitesmoke 30%, #ededed 30%);
+}
+.bu-progress.bu-is-dark::-webkit-progress-value {
+    background-color: #363636;
+}
+.bu-progress.bu-is-dark::-moz-progress-bar {
+    background-color: #363636;
+}
+.bu-progress.bu-is-dark::-ms-fill {
+    background-color: #363636;
+}
+.bu-progress.bu-is-dark:indeterminate {
+    background-image: linear-gradient(to right, #363636 30%, #ededed 30%);
+}
+.bu-progress.bu-is-primary::-webkit-progress-value {
+    background-color: #00d1b2;
+}
+.bu-progress.bu-is-primary::-moz-progress-bar {
+    background-color: #00d1b2;
+}
+.bu-progress.bu-is-primary::-ms-fill {
+    background-color: #00d1b2;
+}
+.bu-progress.bu-is-primary:indeterminate {
+    background-image: linear-gradient(to right, #00d1b2 30%, #ededed 30%);
+}
+.bu-progress.bu-is-link::-webkit-progress-value {
+    background-color: #3273dc;
+}
+.bu-progress.bu-is-link::-moz-progress-bar {
+    background-color: #3273dc;
+}
+.bu-progress.bu-is-link::-ms-fill {
+    background-color: #3273dc;
+}
+.bu-progress.bu-is-link:indeterminate {
+    background-image: linear-gradient(to right, #3273dc 30%, #ededed 30%);
+}
+.bu-progress.bu-is-info::-webkit-progress-value {
+    background-color: #3298dc;
+}
+.bu-progress.bu-is-info::-moz-progress-bar {
+    background-color: #3298dc;
+}
+.bu-progress.bu-is-info::-ms-fill {
+    background-color: #3298dc;
+}
+.bu-progress.bu-is-info:indeterminate {
+    background-image: linear-gradient(to right, #3298dc 30%, #ededed 30%);
+}
+.bu-progress.bu-is-success::-webkit-progress-value {
+    background-color: #48c774;
+}
+.bu-progress.bu-is-success::-moz-progress-bar {
+    background-color: #48c774;
+}
+.bu-progress.bu-is-success::-ms-fill {
+    background-color: #48c774;
+}
+.bu-progress.bu-is-success:indeterminate {
+    background-image: linear-gradient(to right, #48c774 30%, #ededed 30%);
+}
+.bu-progress.bu-is-warning::-webkit-progress-value {
+    background-color: #ffdd57;
+}
+.bu-progress.bu-is-warning::-moz-progress-bar {
+    background-color: #ffdd57;
+}
+.bu-progress.bu-is-warning::-ms-fill {
+    background-color: #ffdd57;
+}
+.bu-progress.bu-is-warning:indeterminate {
+    background-image: linear-gradient(to right, #ffdd57 30%, #ededed 30%);
+}
+.bu-progress.bu-is-danger::-webkit-progress-value {
+    background-color: #f14668;
+}
+.bu-progress.bu-is-danger::-moz-progress-bar {
+    background-color: #f14668;
+}
+.bu-progress.bu-is-danger::-ms-fill {
+    background-color: #f14668;
+}
+.bu-progress.bu-is-danger:indeterminate {
+    background-image: linear-gradient(to right, #f14668 30%, #ededed 30%);
+}
+.bu-progress:indeterminate {
+    animation-duration: 1.5s;
+    animation-iteration-count: infinite;
+    animation-name: moveIndeterminate;
+    animation-timing-function: linear;
+    background-color: #ededed;
+    background-image: linear-gradient(to right, #4a4a4a 30%, #ededed 30%);
+    background-position: top left;
+    background-repeat: no-repeat;
+    background-size: 150% 150%;
+}
+.bu-progress:indeterminate::-webkit-progress-bar {
+    background-color: transparent;
+}
+.bu-progress:indeterminate::-moz-progress-bar {
+    background-color: transparent;
+}
+.bu-progress:indeterminate::-ms-fill {
+    animation-name: none;
+}
+.bu-progress.bu-is-small {
+    height: 0.75rem;
+}
+.bu-progress.bu-is-medium {
+    height: 1.25rem;
+}
+.bu-progress.bu-is-large {
+    height: 1.5rem;
+}
+
+@keyframes moveIndeterminate {
+    from {
+        background-position: 200% 0;
+    }
+    to {
+        background-position: -200% 0;
+    }
 }
