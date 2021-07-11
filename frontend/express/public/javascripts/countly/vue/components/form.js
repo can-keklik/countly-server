@@ -13,7 +13,8 @@
                     return {};
                 }
             },
-            beforeCopyFn: {type: Function}
+            beforeCopyFn: {type: Function},
+            requiresAsyncSubmit: {type: Boolean, default: false}
         },
         data: function() {
             return {
@@ -47,15 +48,33 @@
                 currentStepIndex: 0,
                 stepContents: [],
                 isMounted: false,
-                isSubmissionAllowed: true
+                isSubmissionAllowed: true,
+                isSubmitPending: false
             };
         },
         computed: {
+            lastValidIndex: function() {
+                if (!this.isMounted) {
+                    return -1;
+                }
+                for (var i = 0; i < this.stepContents.length; i++) {
+                    if (this.stepContents[i].isStep && !this.stepContents[i].isValid) {
+                        return i;
+                    }
+                }
+                return i;
+            },
             activeContentId: function() {
                 if (this.activeContent) {
                     return this.activeContent.tId;
                 }
                 return null;
+            },
+            currentScreenMode: function() {
+                if (this.activeContent && this.activeContent.screen) {
+                    return this.activeContent.screen;
+                }
+                return "half";
             },
             currentStepId: function() {
                 return this.activeContentId;
@@ -121,6 +140,11 @@
                     this.currentStepIndex = newIndex;
                 }
             },
+            setStepSafe: function(newIndex) {
+                if (newIndex <= this.lastValidIndex) {
+                    this.setStep(newIndex);
+                }
+            },
             prevStep: function() {
                 this.setStep(this.currentStepIndex - 1);
             },
@@ -137,9 +161,22 @@
             submit: function(force) {
                 this.beforeLeavingStep();
                 if (this.isSubmissionAllowed || force === true) {
-                    this.$emit("submit", JSON.parse(JSON.stringify(this.editedObject)));
-                    if (this.doClose) {
-                        this.doClose();
+                    if (this.requiresAsyncSubmit) {
+                        this.isSubmitPending = true;
+                        var self = this;
+                        var callback = function(err) {
+                            self.isSubmitPending = false;
+                            if (!err && self.doClose) {
+                                self.doClose();
+                            }
+                        };
+                        this.$emit("submit", JSON.parse(JSON.stringify(this.editedObject)), callback);
+                    }
+                    else {
+                        this.$emit("submit", JSON.parse(JSON.stringify(this.editedObject)));
+                        if (this.doClose) {
+                            this.doClose();
+                        }
                     }
                 }
             },
@@ -166,23 +203,6 @@
         }
     });
 
-    Vue.component("cly-content", _mixins.BaseContent.extend({
-        template: '<div class="cly-vue-content" :id="elementId" v-if="isActive || alwaysMounted">\n' +
-                        '<div v-show="isActive"><slot/></div>\n' +
-                    '</div>'
-    }));
-
-    Vue.component("cly-step", BaseStep.extend({
-        methods: {
-            setValid: function(valid) {
-                this.isValid = valid;
-            }
-        },
-        template: '<div class="cly-vue-content" :id="elementId" v-if="isActive || alwaysMounted">\n' +
-                        '<div v-show="isActive"><slot :setValid="setValid"/></div>\n' +
-                    '</div>'
-    }));
-
     Vue.component("cly-form", countlyBaseComponent.extend({
         mixins: [MultiStepFormMixin],
         template: '<div class="cly-vue-form"><slot name="default"\n' +
@@ -193,6 +213,13 @@
     Vue.component("cly-form-step", BaseStep.extend({
         props: {
             validatorFn: {type: Function},
+            screen: {
+                type: String,
+                default: "half",
+                validator: function(value) {
+                    return ['half', 'full'].indexOf(value) !== -1;
+                }
+            }
         },
         mounted: function() {
             var self = this;
@@ -211,12 +238,20 @@
                 this.$refs.observer.validate();
             }
         },
+        computed: {
+            isParentReady: function() {
+                if (this.$parent.isToggleable) {
+                    return this.$parent.isOpened;
+                }
+                return true;
+            }
+        },
         template: '<div class="cly-vue-content" :id="elementId" v-if="isActive || alwaysMounted">\n' +
-                    '<div v-show="isActive">\n' +
-                        '<validation-observer ref="observer" v-slot="v">\n' +
+                    '<validation-observer ref="observer" v-slot="v">\n' +
+                        '<div v-show="isActive" v-if="isParentReady">\n' +
                             '<slot/>\n' +
-                        '</validation-observer>\n' +
-                    '</div>\n' +
+                        '</div>\n' +
+                    '</validation-observer>\n' +
                 '</div>'
     }));
 

@@ -1,4 +1,4 @@
-/* global Vue, _, countlyGlobal, CV, Promise */
+/* global Vue, Vuex, _, countlyGlobal, CV, Promise */
 
 (function(countlyVue) {
 
@@ -199,6 +199,9 @@
         getters[statusKey] = function(_state) {
             return _state[statusField];
         };
+        getters[paramsKey] = function(_state) {
+            return _state[paramsField];
+        };
 
         //
         mutations[_capitalized("set", resourceName)] = function(_state, newValue) {
@@ -263,6 +266,10 @@
         actions[_capitalized("pasteAndFetch", resourceName)] = function(context, remoteParams) {
             context.commit(_capitalized("set", paramsKey), Object.assign({}, remoteParams, {ready: true}));
             return context.dispatch(_capitalized("fetch", resourceName), { _silent: false });
+        };
+
+        actions[_capitalized("updateParams", resourceName)] = function(context, remoteParams) {
+            context.commit(_capitalized("set", paramsKey), Object.assign({}, remoteParams));
         };
 
         return VuexModule(name, {
@@ -378,18 +385,45 @@
     };
 
     var getServerDataSource = function(storeInstance, path, resourceName) {
-        var statusPath = path + "/" + _capitalized(resourceName, 'status'),
-            actionPath = path + "/" + _capitalized("pasteAndFetch", resourceName),
+
+        var statusPath = null,
+            paramsPath = null,
+            pasteAndFetchPath = null,
+            updateParamsPath = null,
+            resourcePath = null;
+
+        if (arguments.length === 3 && path) {
+            statusPath = path + "/" + _capitalized(resourceName, 'status');
+            paramsPath = path + "/" + _capitalized(resourceName, 'params');
+            pasteAndFetchPath = path + "/" + _capitalized("pasteAndFetch", resourceName);
+            updateParamsPath = path + "/" + _capitalized("updateParams", resourceName);
             resourcePath = path + "/" + resourceName;
+        }
+        else {
+            resourceName = path;
+            statusPath = _capitalized(resourceName, 'status');
+            paramsPath = _capitalized(resourceName, 'params');
+            pasteAndFetchPath = _capitalized("pasteAndFetch", resourceName);
+            updateParamsPath = _capitalized("updateParams", resourceName);
+            resourcePath = resourceName;
+        }
 
         return {
             fetch: function(params) {
-                return storeInstance.dispatch(actionPath, params);
+                return storeInstance.dispatch(pasteAndFetchPath, params);
+            },
+            updateParams: function(params) {
+                return storeInstance.dispatch(updateParamsPath, params);
             },
             statusAddress: {
                 type: 'vuex-getter',
                 store: storeInstance,
                 path: statusPath
+            },
+            paramsAddress: {
+                type: 'vuex-getter',
+                store: storeInstance,
+                path: paramsPath
             },
             dataAddress: {
                 type: 'vuex-getter',
@@ -399,9 +433,16 @@
         };
     };
 
+    var getLocalStore = function(wrapper) {
+        var storeConfig = { modules: {} };
+        storeConfig.modules[wrapper.name] = wrapper.module;
+        return new Vuex.Store(storeConfig);
+    };
+
     countlyVue.vuex.Module = VuexModule;
     countlyVue.vuex.MutableTable = MutableTable;
     countlyVue.vuex.ServerDataTable = ServerDataTable;
     countlyVue.vuex.getServerDataSource = getServerDataSource;
+    countlyVue.vuex.getLocalStore = getLocalStore;
 
 }(window.countlyVue = window.countlyVue || {}));

@@ -28,6 +28,14 @@
                 default: function() {
                     return [];
                 }
+            },
+            paused: {
+                type: Boolean,
+                default: false
+            },
+            displaySearch: {
+                type: Boolean,
+                default: true
             }
         },
         computed: {
@@ -143,6 +151,13 @@
                 var addr = this.dataSource.statusAddress;
                 return addr.store.getters[addr.path];
             },
+            externalParams: function() {
+                if (!this.dataSource) {
+                    return undefined;
+                }
+                var addr = this.dataSource.paramsAddress;
+                return addr.store.getters[addr.path];
+            },
             availablePages: function() {
                 var pages = [];
                 for (var i = this.firstPage, I = Math.min(this.lastPage, 10000); i <= I; i++) {
@@ -167,6 +182,16 @@
             },
             lastPage: function() {
                 this.checkPageBoundaries();
+            },
+            paused: function(newVal) {
+                if (newVal) {
+                    this.dataSource.updateParams({
+                        ready: false
+                    });
+                }
+                else {
+                    this.triggerExternalSource();
+                }
             }
         },
         data: function() {
@@ -230,7 +255,7 @@
                 }
             },
             triggerExternalSource: function() {
-                if (!this.dataSource) {
+                if (!this.dataSource || this.paused) {
                     return;
                 }
                 if (this.dataSource.fetch) {
@@ -506,7 +531,7 @@
                 if (!this.dataSource) {
                     return false;
                 }
-                return this.externalStatus !== 'ready';
+                return this.externalStatus !== 'ready' || (this.externalParams && !this.externalParams.ready);
             },
             classes: function() {
                 if (this.dataSource && this.externalStatus === 'silent-pending') {
@@ -532,6 +557,7 @@
                                 <div class="bu-level-left">\
                                     <slot v-bind="commonScope" name="header-left"></slot>\
                                 </div>\
+                                <slot v-bind="commonScope" name="header-full"></slot>\
                                 <div class="bu-level-right">\
                                     <slot v-bind="commonScope" name="header-right"></slot>\
                                     <div class="bu-level-item">\
@@ -553,7 +579,7 @@
                                             </template>\
                                         </cly-select-x>\
                                     </div>\
-                                    <div class="bu-level-item">\
+                                    <div class="bu-level-item" v-if="displaySearch">\
                                         <el-input size="small" class="cly-vue-eldatatable__search--grey" style="width:200px" prefix-icon="el-icon-search" :placeholder="searchPlaceholder" v-model="searchQueryProxy"></el-input>\
                                     </div>\
                                 </div>\
@@ -621,5 +647,16 @@
                     </div>'
     }));
 
+    Vue.component("cly-datatable-undo-row", countlyBaseComponent.extend({
+        props: {
+            delayedAction: {
+                type: Object
+            },
+        },
+        template: '<div @click.stop v-if="delayedAction" class="undo-row">\n' +
+                        '<slot></slot>\n' +
+                        '<a @click.stop="delayedAction.abort()">Undo.</a>\n' +
+                    '</div>\n'
+    }));
 
 }(window.countlyVue = window.countlyVue || {}, jQuery));

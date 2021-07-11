@@ -1,113 +1,67 @@
-/* global Vue */
+/* global Vue, $ */
 
 (function(countlyVue) {
 
-    var countlyBaseComponent = countlyVue.components.BaseComponent,
-        _mixins = countlyVue.mixins;
-
-    var BaseContentMixin = countlyBaseComponent.extend(
-        // @vue/component
-        {
-            inheritAttrs: false,
-            mixins: [
-                _mixins.i18n
-            ],
-            props: {
-                name: { type: String, default: null},
-                id: { type: String, default: null },
-                alwaysMounted: { type: Boolean, default: true },
-                alwaysActive: { type: Boolean, default: false },
-                role: { type: String, default: "default" }
-            },
-            data: function() {
-                return {
-                    isContent: true
-                };
-            },
-            computed: {
-                isActive: function() {
-                    return this.alwaysActive || (this.role === "default" && this.$parent.activeContentId === this.id);
-                },
-                tName: function() {
-                    return this.name;
-                },
-                tId: function() {
-                    return this.id;
-                },
-                elementId: function() {
-                    return this.componentId + "-" + this.id;
-                }
-            }
-        }
-    );
-
-    Vue.component("cly-panel", countlyBaseComponent.extend(
-        // @vue/component
-        {
-            props: {
-                title: { type: String, required: false },
-                dateSelector: { type: Boolean, required: false, default: true },
-                hasLeftBottom: { type: Boolean, required: false, default: false },
-                onlyHead: { type: Boolean, required: false, default: false }
-            },
-            template: '<div class="cly-vue-panel widget">\n' +
-                            '<div class="widget-header">\n' +
-                                '<div class="left">\n' +
-                                    '<div style="margin-left: 3px;">\n' +
-                                        '<slot name="left-top">\n' +
-                                            '<div class="title" :class="{small: hasLeftBottom}">{{title}}</div>\n' +
-                                        '</slot>\n' +
-                                        '<div v-if="hasLeftBottom">\n' +
-                                            '<slot name="left-bottom"></slot>\n' +
-                                        '</div>\n' +
-                                    '</div>\n' +
-                                '</div>\n' +
-                                '<div class="right">\n' +
-                                    '<slot name="right-top">\n' +
-                                        '<cly-global-date-selector-w v-once v-if="dateSelector"></cly-global-date-selector-w>\n' +
-                                    '</slot>\n' +
-                                '</div>\n' +
-                            '</div>\n' +
-                            '<div class="widget-content help-zone-vb" :class="{\'no-border\': onlyHead}">\n' +
-                                '<slot/>\n' +
-                            '</div>\n' +
-                        '</div>',
-        }
-    ));
+    var countlyBaseComponent = countlyVue.components.BaseComponent;
 
     Vue.component("cly-header", countlyBaseComponent.extend({
         props: {
             title: String
         },
-        template: '<div class="header header--white">\
-                    <div class="bu-level bu-is-mobile">\
-                        <div class="bu-level-left">\
-                            <div class="bu-level-item">\
+        computed: {
+            slotHeaderTop: function() {
+                return !!(this.$scopedSlots["header-top"] || this.$slots["header-top"]);
+            },
+            slotHeaderBottom: function() {
+                return !!(this.$scopedSlots["header-bottom"] || this.$slots["header-bottom"]);
+            },
+            slotHeaderTabs: function() {
+                return !!(this.$scopedSlots["header-tabs"] || this.$slots["header-tabs"]);
+            },
+            headerClasses: function() {
+                return {
+                    "cly-vue-header": true,
+                    "white-bg": true,
+                    "cly-vue-header--no-mb": this.slotHeaderTabs,
+                    "cly-vue-header--no-bb": this.slotHeaderTabs
+                };
+            },
+            midLevelClasses: function() {
+                return {
+                    "bu-level": true,
+                    "bu-is-mobile": true,
+                    "cly-vue-header__level": true,
+                    "cly-vue-header__level--no-pt": !this.slotHeaderTop,
+                    "cly-vue-header__level--no-pb": !this.slotHeaderBottom
+                };
+            }
+        },
+        template: '<div>\
+                    <div :class="[headerClasses]">\
+                        <div class="bu-level bu-is-mobile" v-if="slotHeaderTop">\
+                            <div class="bu-level-left">\
                                 <slot name="header-top"></slot>\
                             </div>\
                         </div>\
-                    </div>\
-                    <div class="bu-level bu-is-mobile">\
-                        <div class="bu-level-left">\
-                            <div class="bu-level-item">\
+                        <div :class="[midLevelClasses]">\
+                            <div class="bu-level-left">\
                                 <slot name="header-left">\
-                                    <h2>{{title}}</h2>\
+                                    <div class="bu-level-item">\
+                                        <h2>{{title}}</h2>\
+                                    </div>\
                                 </slot>\
                             </div>\
+                            <div class="bu-level-right">\
+                                <slot name="header-right"></slot>\
+                            </div>\
                         </div>\
-                        <slot></slot>\
-                        <div class="bu-level-right">\
-                            <slot name="header-right">\
-                            </slot>\
-                        </div>\
-                    </div>\
-                    <div class="bu-level bu-is-mobile">\
-                        <div class="bu-level-left">\
-                            <div class="bu-level-item">\
+                        <div class="bu-level bu-is-mobile" v-if="slotHeaderBottom">\
+                            <div class="bu-level-left">\
                                 <slot name="header-bottom"></slot>\
                             </div>\
                         </div>\
                     </div>\
+                    <slot name="header-tabs"></slot>\
                 </div>'
     }));
 
@@ -115,8 +69,8 @@
     //This component is a single column full width component
     //A main component can have multiple sections
     Vue.component("cly-main", countlyBaseComponent.extend({
-        template: '<div class="bu-columns bu-is-gapless main">\
-                        <div class="bu-column bu-is-full">\
+        template: '<div class="cly-vue-main bu-columns bu-is-gapless bu-is-centered">\
+                        <div class="bu-column bu-is-full" style="max-width: 1920px">\
                             <slot></slot>\
                         </div>\
                     </div>'
@@ -131,18 +85,77 @@
                 default: false
             }
         },
-        template: '<div class="cly-vue-section bu-columns bu-is-multiline" :class="{\' bu-is-gapless\': !autoGap}">\
-                        <div class="bu-column bu-is-full">\
-                            <slot name="header">\
-                                <h4>{{title}}</h4>\
-                            </slot>\
+        computed: {
+            levelClass: function() {
+                return {
+                    "bu-mb-4": this.$scopedSlots.header || this.$slots.header || (this.title && this.title.length),
+                    "bu-level": true
+                };
+            }
+        },
+        template: '<div class="cly-vue-section">\
+                        <div :class="[levelClass]">\
+                            <div class="bu-level-left">\
+                                <slot name="header">\
+                                    <div class="bu-level-item" v-if="title">\
+                                        <h4>{{title}}</h4>\
+                                    </div>\
+                                </slot>\
+                            </div>\
                         </div>\
-                        <div class="bu-column bu-is-full cly-vue-section__content">\
+                        <div class="cly-vue-section__content white-bg">\
                             <slot></slot>\
                         </div>\
                     </div>'
     }));
 
-    countlyVue.mixins.BaseContent = BaseContentMixin;
+    var _ModalManager = new Vue({
+        el: "#vue-modal-manager",
+        template: '<div><div :class="{\'is-active\': nClients>0}" id="vue-common-overlay"></div></div>',
+        data: function() {
+            return {
+                clients: {}
+            };
+        },
+        computed: {
+            nClients: function() {
+                return Object.keys(this.clients).length;
+            }
+        },
+        watch: {
+            nClients: function(newVal) {
+                if (newVal > 0) {
+                    $("body").addClass("has-active-modal");
+                }
+                else {
+                    $("body").removeClass("has-active-modal");
+                }
+            }
+        },
+        methods: {
+            setState: function(clientId, state) {
+                if (state) {
+                    Vue.set(this.clients, clientId, true);
+                }
+                else {
+                    Vue.delete(this.clients, clientId);
+                }
+            }
+        }
+    });
+
+    countlyVue.mixins.Modal = {
+        methods: {
+            setModalState: function(state) {
+                _ModalManager.setState(this.componentId, state);
+            }
+        },
+        beforeDestroy: function() {
+            _ModalManager.setState(this.componentId, false);
+        }
+    };
+
+    countlyVue.ModalManager = _ModalManager;
+
 
 }(window.countlyVue = window.countlyVue || {}));

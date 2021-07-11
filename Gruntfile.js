@@ -35,6 +35,7 @@ module.exports = function(grunt) {
                 src: [
                     'frontend/express/public/javascripts/utils/polyfills.js',
                     'frontend/express/public/javascripts/utils/underscore-min.js',
+                    'frontend/express/public/javascripts/utils/lodash.merge.js',
                     'frontend/express/public/javascripts/utils/prefixfree.min.js',
                     'frontend/express/public/javascripts/utils/moment/moment-with-locales.min.js',
                     'frontend/express/public/javascripts/utils/handlebars.js',
@@ -79,7 +80,8 @@ module.exports = function(grunt) {
                     'frontend/express/public/javascripts/utils/jsoneditor/minify.json.js',
                     'frontend/express/public/javascripts/utils/jsoneditor/jsoneditor.js',
                     'frontend/express/public/javascripts/utils/Sortable.min.js',
-                    'frontend/express/public/javascripts/utils/vue/vuedraggable.umd.min.js'
+                    'frontend/express/public/javascripts/utils/vue/vuedraggable.umd.min.js',
+                    'frontend/express/public/javascripts/utils/countly.checkbox.js'
                 ],
                 dest: 'frontend/express/public/javascripts/min/countly.utils.concat.js'
             },
@@ -105,6 +107,7 @@ module.exports = function(grunt) {
             },
             lib: {
                 src: [
+                    'frontend/express/public/javascripts/countly/countly.auth.js',
                     'frontend/express/public/javascripts/countly/countly.helpers.js',
                     'frontend/express/public/javascripts/countly/countly.map.helper.js',
                     'frontend/express/public/javascripts/countly/countly.event.js',
@@ -121,8 +124,8 @@ module.exports = function(grunt) {
                     'frontend/express/public/javascripts/countly/countly.task.manager.js',
                     'frontend/express/public/javascripts/countly/countly.app.users.js',
                     'frontend/express/public/javascripts/countly/countly.template.js',
-                    'frontend/express/public/javascripts/countly/countly.views.js',
                     'frontend/express/public/javascripts/countly/vue/core.js',
+                    'frontend/express/public/javascripts/countly/vue/container.js',
                     'frontend/express/public/javascripts/countly/vue/helpers.js',
                     'frontend/express/public/javascripts/countly/vue/data/vuex.js',
                     'frontend/express/public/javascripts/countly/vue/imports.js',
@@ -132,15 +135,40 @@ module.exports = function(grunt) {
                     'frontend/express/public/javascripts/countly/vue/components/date.js',
                     'frontend/express/public/javascripts/countly/vue/components/dropdown.js',
                     'frontend/express/public/javascripts/countly/vue/components/input.js',
-                    'frontend/express/public/javascripts/countly/vue/components/datatable-legacy.js',
+                    'frontend/express/public/javascripts/countly/vue/datatable-legacy.js',
                     'frontend/express/public/javascripts/countly/vue/components/datatable.js',
                     'frontend/express/public/javascripts/countly/vue/components/drawer.js',
                     'frontend/express/public/javascripts/countly/vue/components/vis.js',
                     'frontend/express/public/javascripts/countly/vue/components/helpers.js',
+                    'frontend/express/public/javascripts/countly/vue/components/static.js',
+                    'frontend/express/public/javascripts/countly/vue/components/progress.js',
+                    'frontend/express/public/javascripts/countly/vue/legacy.js',
                     'frontend/express/public/javascripts/countly/countly.vue.legacy.js',
                     'frontend/express/public/javascripts/countly/countly.token.manager.js',
                     'frontend/express/public/javascripts/countly/countly.version.history.js',
-                    'frontend/express/public/javascripts/countly/countly.analytics.js'
+                    'frontend/express/public/javascripts/countly/countly.analytics.js',
+                    'frontend/express/public/javascripts/countly/countly.views.js',
+                    'frontend/express/public/core/user-activity/javascripts/countly.models.js',
+                    'frontend/express/public/core/user-activity/javascripts/countly.views.js',
+                    'frontend/express/public/core/session-overview/javascripts/countly.models.js',
+                    'frontend/express/public/core/session-overview/javascripts/countly.views.js',
+                    'frontend/express/public/core/session-durations/javascripts/countly.models.js',
+                    'frontend/express/public/core/session-durations/javascripts/countly.views.js',
+                    'frontend/express/public/core/session-frequency/javascripts/countly.models.js',
+                    'frontend/express/public/core/session-frequency/javascripts/countly.views.js',
+                    'frontend/express/public/core/app-version/javascripts/countly.views.js',
+                    'frontend/express/public/core/app-resolution/javascripts/countly.views.js',
+                    'frontend/express/public/core/platform/javascripts/countly.views.js',
+                    'frontend/express/public/core/devices-and-types/javascripts/countly.views.js',
+                    'frontend/express/public/core/devices-and-types/javascripts/countly.models.js',
+                    'frontend/express/public/core/carrier/javascripts/countly.views.js',
+                    'frontend/express/public/core/carrier/javascripts/countly.models.js',
+                    'frontend/express/public/core/events/javascripts/countly.overview.models.js',
+                    'frontend/express/public/core/events/javascripts/countly.overview.views.js',
+                    'frontend/express/public/core/events/javascripts/countly.details.views.js',
+                    'frontend/express/public/core/events/javascripts/countly.details.models.js',
+                    'frontend/express/public/core/user-management/javascripts/countly.overview.models.js',
+                    'frontend/express/public/core/user-management/javascripts/countly.overview.views.js'
                 ],
                 dest: 'frontend/express/public/javascripts/min/countly.lib.concat.js'
             }
@@ -173,6 +201,7 @@ module.exports = function(grunt) {
                         'frontend/express/public/stylesheets/amaranjs/amaran.min.css',
                         'frontend/express/public/stylesheets/selectize/selectize.css',
                         'frontend/express/public/stylesheets/jsoneditor/codemirror.css',
+                        'frontend/express/public/stylesheets/countly-checkbox/countly.checkbox.css',
                         'frontend/express/public/javascripts/dom/tipsy/tipsy.css',
                         'frontend/express/public/javascripts/visualization/rickshaw/rickshaw.min.css',
                         'frontend/express/public/javascripts/dom/pace/pace-theme-flash.css',
@@ -220,12 +249,24 @@ module.exports = function(grunt) {
         sass: { // Task
             dist: { // Target
                 options: { // Target options
-                    style: 'expanded'
+                    style: 'compressed',
+                    update: true // only compile when scss file is newer than css file
                 },
-                files: { // Dictionary of files
-                    'frontend/express/public/stylesheets/vue/clyvue.css': 'frontend/express/public/stylesheets/vue/clyvue.scss'
-                }
+                files: [
+                    { src: 'frontend/express/public/stylesheets/vue/clyvue.scss', dest: 'frontend/express/public/stylesheets/vue/clyvue.css' },
+                    { src: 'frontend/express/public/stylesheets/styles/manifest.scss', dest: 'frontend/express/public/stylesheets/styles/manifest.css' },
+                    { expand: true, src: ['plugins/*/frontend/public/stylesheets/**/*.scss'], ext: '.css', extDot: 'first' }
+                ]
             }
+        },
+        watch: {
+            scripts: {
+                files: ['plugins/*/frontend/public/stylesheets/**/*.scss',
+                    "frontend/express/public/core/*/stylesheets/**/*.scss",
+                    "frontend/express/public/stylesheets/styles/**/*.scss"
+                ],
+                tasks: ['sass']
+            },
         }
     });
 
@@ -243,15 +284,16 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks('grunt-contrib-uglify');
     grunt.loadNpmTasks('grunt-contrib-copy');
     grunt.loadNpmTasks('grunt-contrib-cssmin');
+    grunt.loadNpmTasks('grunt-contrib-watch');
     grunt.loadNpmTasks('grunt-eslint');
     grunt.loadNpmTasks('grunt-mocha-test');
 
-    grunt.registerTask('default', ['eslint', 'mochaTest']);
+    grunt.registerTask('default', ['mochaTest']);
 
     grunt.registerTask('dist', ['sass', 'concat', 'uglify', 'cssmin']);
 
     grunt.registerTask('plugins', 'Minify plugin JS / CSS files and copy images', function() {
-        var plugins = require('./plugins/plugins.json'), js = [], css = [], scss = {}, img = [], fs = require('fs'), path = require('path');
+        var plugins = require('./plugins/plugins.json'), js = [], css = [], img = [], fs = require('fs'), path = require('path');
         console.log('Preparing production files for following plugins: %j', plugins);
 
         if (plugins.indexOf('push') !== -1) {
@@ -289,7 +331,7 @@ module.exports = function(grunt) {
             if (fs.existsSync(javascripts) && fs.statSync(javascripts).isDirectory()) {
                 files = fs.readdirSync(javascripts);
                 if (files.length) {
-                // move models to the top, then all dependencies, then views
+                    // move models to the top, then all dependencies, then views
                     for (var i = 0; i < files.length; i++) {
                         if (files[i].indexOf('countly.models.js') !== -1 && i !== 0) {
                             files.splice(0, 0, files.splice(i, 1)[0]);
@@ -315,15 +357,12 @@ module.exports = function(grunt) {
                     if (fs.statSync(file).isFile() && name !== 'pre-login.css' && name.indexOf('.') !== 0 && name.endsWith('.css')) {
                         css.push('plugins/' + plugin + '/frontend/public/stylesheets/' + name);
                     }
-                    else if (fs.statSync(file).isFile() && name.indexOf('.') !== 0 && name.endsWith('.scss')) {
-                        scss['plugins/' + plugin + '/frontend/public/stylesheets/' + name.replace(".scss", ".css")] = 'plugins/' + plugin + '/frontend/public/stylesheets/' + name;
-                    }
                 });
             }
 
             try {
                 if (fs.existsSync(images) && fs.statSync(images).isDirectory()) {
-                    img.push({expand: true, cwd: 'plugins/' + plugin + '/frontend/public/images/' + plugin + '/', filter: 'isFile', src: '**', dest: 'frontend/express/public/images/' + plugin + '/'});
+                    img.push({ expand: true, cwd: 'plugins/' + plugin + '/frontend/public/images/' + plugin + '/', filter: 'isFile', src: '**', dest: 'frontend/express/public/images/' + plugin + '/' });
                 }
             }
             catch (err) {
@@ -341,11 +380,10 @@ module.exports = function(grunt) {
         grunt.config('uglify.plugins.files.frontend/express/public/javascripts/min/countly\\.plugins\\.js', 'frontend/express/public/javascripts/min/countly.plugins.concat.js');
 
         grunt.config('cssmin.plugins.files.frontend/express/public/stylesheets/plugins\\.min\\.css', css);
-        grunt.config('sass.plugins.files', scss);
 
         // grunt.task.loadTasks(['copy:plugins', 'concat:plugins', 'uglify:plugins']);
         // grunt.task.run(['concat', 'uglify']);
-        grunt.task.run(['concat:plugins', 'uglify:plugins', 'copy:plugins', 'sass:plugins', 'cssmin:plugins']);
+        grunt.task.run(['concat:plugins', 'uglify:plugins', 'copy:plugins', 'sass', 'cssmin:plugins']);
 
         console.log('Done preparing production files');
     });

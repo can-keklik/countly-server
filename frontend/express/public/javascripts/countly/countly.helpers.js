@@ -1,4 +1,4 @@
-/* global _, countlyGlobal, countlyCommon, _JSONEditor, app, TableTools, countlyDeviceDetails, moment, jQuery, $, store, Handlebars*/
+/* global _, countlyGlobal, countlyCommon, _JSONEditor, app, TableTools, countlyDeviceDetails, moment, jQuery, $, store, Handlebars, countlyTaskManager*/
 /*
  Some helper functions to be used throughout all views. Includes custom
  popup, alert and confirm dialogs for the time being.
@@ -986,6 +986,10 @@
                 delete data.formatFields;
             }
             var url = countlyCommon.API_URL + (exportByAPI ? "/o/export/request" : "/o/export/db");
+            if (data.url) {
+                url = data.url;
+            }
+
             var form = $('<form method="POST" action="' + url + '">');
             $.each(data, function(k, v) {
                 if (CountlyHelpers.isJSON(v)) {
@@ -995,13 +999,77 @@
                     form.append($('<input type="hidden" name="' + k + '" value="' + v + '">'));
                 }
             });
-            $('body').append(form);
-            form.submit();
+            if (exportByAPI && url === "/o/export/requestQuery") {
+                if (Array.isArray(data.prop)) {
+                    data.prop = data.prop.join(",");
+                }
+                $.ajax({
+                    type: "POST",
+                    url: countlyCommon.API_PARTS.data.r + "/export/requestQuery",
+                    data: data,
+                    success: function(result) {
+                        var task_id = null;
+                        var fileid = null;
+                        if (result && result.result && result.result.task_id) {
+                            task_id = result.result.task_id;
+                            countlyTaskManager.monitor(task_id);
+                            CountlyHelpers.displayExportStatus(null, fileid, task_id);
+                        }
+                        $(".save-table-data").click();
+
+                    },
+                    error: function(xhr, status, error) {
+                        var filename = null;
+                        if (xhr && xhr.responseText && xhr.responseText !== "") {
+                            var ob = JSON.parse(xhr.responseText);
+                            if (ob.result && ob.result.message) {
+                                error = ob.result.message;
+                            }
+                            if (ob.result && ob.result.filename) {
+                                filename = ob.result.filename;
+                            }
+                        }
+                        CountlyHelpers.displayExportStatus(error, filename, null);
+                    }
+                });
+            }
+            else {
+                $('body').append(form);
+                form.submit();
+            }
         });
         if (asDialog) {
             revealDialog(dialog);
         }
         return dialog;
+    };
+
+    CountlyHelpers.displayExportStatus = function(error, export_id, task_id) {
+        if (error) {
+            CountlyHelpers.alert(error, "red");
+        }
+        else if (export_id) {
+            CountlyHelpers.notify({
+                type: "ok",
+                title: jQuery.i18n.map["common.success"],
+                message: jQuery.i18n.map["export.export-finished"],
+                info: jQuery.i18n.map["app-users.export-finished-click"],
+                sticky: false,
+                clearAll: true,
+                onClick: function() {
+                    var win = window.open(countlyCommon.API_PARTS.data.r + "/export/download/" + task_id + "?auth_token=" + countlyGlobal.auth_token + "&app_id=" + countlyCommon.ACTIVE_APP_ID, '_blank');
+                    win.focus();
+                }
+            });
+            self.refresh();
+        }
+        else if (task_id) {
+            CountlyHelpers.notify({type: "ok", title: jQuery.i18n.map["common.success"], message: jQuery.i18n.map["export.export-started"], sticky: false, clearAll: false});
+            // self.refresh();
+        }
+        else {
+            CountlyHelpers.alert(jQuery.i18n.map["export.export-failed"], "red");
+        }
     };
 
     /**
@@ -3113,6 +3181,8 @@
             chartData.chartDP.dp = chartDP;
 
             for (i = 0; i < chartData.chartData.length; i++) {
+                //TODO-LA: use only percent property when sessions views are finished
+                chartData.chartData[i].percentageNumber = chartData.chartData[i].percent;
                 chartData.chartData[i].percent = "<div class='percent-bar' style='width:" + (2 * chartData.chartData[i].percent) + "px;'></div>" + chartData.chartData[i].percent + "%";
             }
 
@@ -3336,6 +3406,122 @@
         el = el ? $(el) : $("#content .widget");
 
         $(breadcrumbsEl).prependTo(el);
+    };
+
+    //TODO: move buildFilters inside query builder component
+    CountlyHelpers.buildFilters = function(filters) {
+        var newQuery = {};
+        if (filters.query) {
+            Object.keys(filters.query).forEach(function(queryItem) {
+                var propertyValue = filters.query[queryItem];
+                var propertyNameWithoutUp = queryItem.split('.')[1];
+                newQuery[propertyNameWithoutUp] = propertyValue;
+            });
+        }
+        return newQuery;
+    };
+
+    /**
+    * Get currently selected period that can be used in ajax requests
+    * @memberof CountlyHelpers
+    * @param {string} period selected date period    
+    * @returns {string} supported values are (month, 60days, 30days, 7days, yesterday, hour or [startMiliseconds, endMiliseconds] as [1417730400000,1420149600000])
+    */
+    CountlyHelpers.getPeriodUrlQueryParameter = function(period) {
+        if (Object.prototype.toString.call(period) === '[object Array]') {
+            return JSON.stringify(period);
+        }
+        else {
+            return period;
+        }
+    };
+    /**
+    * Format number to percentage value
+    * @memberof CountlyHelpers
+    * @param {number} value number to be converted to percentage    
+    * @param {number} decimalPlaces number of decimal places to keep for percentage, default is two
+    * @returns {number} percentage number for given value. Otherwise, returns 0 for falsy or non number values
+    */
+    CountlyHelpers.formatPercentage = function(value, decimalPlaces) {
+        if (isNaN(value) || !value) {
+            return 0;
+        }
+        if (!decimalPlaces) {
+            decimalPlaces = 2;
+        }
+        return parseFloat((Math.round(value * 100)).toFixed(decimalPlaces));
+    };
+
+    /*
+     * Function that returns difference between two arrays
+     * @param {Array} a1 - first array
+     * @param {Array} a2 - second array
+     */
+    CountlyHelpers.arrayDiff = function(a1, a2) {
+        var a = [], diff = [];
+
+        for (var i1 = 0; i1 < a1.length; i1++) {
+            a[a1[i1]] = true;
+        }
+
+        for (var i2 = 0; i2 < a2.length; i2++) {
+            if (a[a2[i2]]) {
+                delete a[a2[i2]];
+            }
+            else {
+                a[a2[i2]] = true;
+            }
+        }
+
+        for (var k in a) {
+            diff.push(k);
+        }
+
+        return diff;
+    };
+
+    /*
+     * Function that returns difference between two arrays
+     * @param {*} item - item
+     * @param {Array} array - array
+     */
+    CountlyHelpers.removeItemFromArray = function(item, array) {
+        var index = array.indexOf(item);
+        if (index > -1) {
+            array.splice(index, 1);
+        }
+        return array;
+    };
+
+    /**
+     * Function that clean duplicates from passed array.
+     * @param {Array} array - array
+     * @return {Array} - array without duplicates
+     */
+    CountlyHelpers.arrayUnique = function(array) {
+        var a = array.concat();
+        for (var i = 0; i < a.length; ++i) {
+            for (var j = i + 1; j < a.length; ++j) {
+                if (a[i] === a[j]) {
+                    a.splice(j--, 1);
+                }
+            }
+        }
+        return a;
+    };
+
+    /**
+     * Function that remove empty values from array.
+     * @param {array} array - array that contain empty values
+     * @return {array} - array without empty values
+     */
+    CountlyHelpers.removeEmptyValues = function(array) {
+        for (var i = 0; i < array.length; i++) {
+            if (array[i] === "") {
+                array.splice(i, 1);
+            }
+        }
+        return array;
     };
 
     $(document).ready(function() {
@@ -3833,5 +4019,5 @@ $.widget("cly.datepickerExtended", {
             this.baseInstance.datepicker("setDate", date);
             this._syncWith("picker", 0);
         }
-    }
+    },
 });

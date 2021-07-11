@@ -1,18 +1,37 @@
-/*global app, countlyVue, countlyVueExample, countlyCommon, echarts */
+/*global app, countlyVue, countlyVueExample, countlyCommon, CV */
 
 (function() {
-    var TableView = countlyVue.views.BaseView.extend({
-        template: '#vue-example-table-template',
+    var TableView = countlyVue.views.create({
+        template: CV.T('/vue-example/templates/table.html'),
         computed: {
             tableRows: function() {
                 return this.$store.getters["countlyVueExample/myRecords/all"];
             },
             rTableData: function() {
-                return this.$store.getters["countlyVueExample/tooManyRecords"];
+                return this.tableStore.getters.tooManyRecords;
             }
         },
         data: function() {
+            var tableStore = countlyVue.vuex.getLocalStore(countlyVue.vuex.ServerDataTable("tooManyRecords", {
+                columns: ['_id', "name"],
+                onRequest: function(context) {
+                    return {
+                        type: "GET",
+                        url: countlyCommon.API_URL + "/o",
+                        data: {
+                            app_id: countlyCommon.ACTIVE_APP_ID,
+                            method: 'large-col',
+                            visibleColumns: JSON.stringify(context.state.params.selectedDynamicCols)
+                        }
+                    };
+                },
+                onReady: function(context, rows) {
+                    return rows;
+                }
+            }));
             return {
+                isTablePaused: true,
+                tableStore: tableStore,
                 tableDynamicCols: [{
                     value: "name",
                     label: "Name",
@@ -38,15 +57,17 @@
                     default: true
                 }],
                 localTableTrackedFields: ['status'],
-                remoteTableDataSource: countlyVue.vuex.getServerDataSource(this.$store, "countlyVueExample", "tooManyRecords"),
+                remoteTableDataSource: countlyVue.vuex.getServerDataSource(tableStore, "tooManyRecords"),
                 tablePersistKey: "vueExample_localTable_" + countlyCommon.ACTIVE_APP_ID,
                 remoteTablePersistKey: "vueExample_remoteTable_" + countlyCommon.ACTIVE_APP_ID,
             };
         },
+        beforeCreate: function() {
+            this.$store.dispatch("countlyVueExample/initializeTable");
+        },
         methods: {
             refresh: function() {
                 this.$store.dispatch("countlyVueExample/myRecords/fetchAll");
-                this.$store.dispatch("countlyVueExample/fetchTooManyRecords");
             },
             onEditRecord: function(row) {
                 var self = this;
@@ -59,6 +80,7 @@
             }
         }
     });
+
     var FormBasics = countlyVue.views.BaseView.extend({
         template: '#form-basics-template',
         data: function() {
@@ -135,6 +157,7 @@
             }
         }
     });
+
     var FormDropdown = countlyVue.views.BaseView.extend({
         template: '#form-dropdown-template',
         watch: {
@@ -162,8 +185,8 @@
                     "label": "A Items",
                     "name": "type-1",
                     "options": [
-                        {"label": "hello0", "value": 0},
-                        {"label": "hello1", "value": 1},
+                        {"label": "windows 10", "value": 0},
+                        {"label": "hello how", "value": 1},
                         {"label": "hello2", "value": 2},
                         {"label": "hello3", "value": 3},
                         {"label": "hello4", "value": 4},
@@ -221,123 +244,23 @@
         }
     });
 
-    var TimeGraphView = countlyVue.views.BaseView.extend({
-        template: '#vue-example-tg-template',
+    var TimeGraphView = countlyVue.views.create({
+        template: CV.T('/vue-example/templates/tg.html'),
         data: function() {
-            var base = +new Date(1968, 9, 3);
-            var oneDay = 24 * 3600 * 1000;
-            var date = [];
-
-            var data = [Math.random() * 300];
-
-            for (var i = 1; i < 20000; i++) {
-                var now = new Date(base += oneDay);
-                date.push([now.getFullYear(), now.getMonth() + 1, now.getDate()].join('/'));
-                data.push(Math.round((Math.random() - 0.5) * 20 + data[i - 1]));
-            }
             return {
+                selBucket: "daily",
                 largeScaleOptions: {
-                    tooltip: {
-                        trigger: 'axis',
-                        position: function(pt) {
-                            return [pt[0], '10%'];
-                        }
-                    },
-                    title: {
-                        left: 'center',
-                        text: 'Some random data',
-                    },
-                    toolbox: {
-                        feature: {
-                            dataZoom: {},
-                            restore: {},
-                            saveAsImage: { show: true }
-                        }
-                    },
-                    xAxis: {
-                        type: 'category',
-                        boundaryGap: false,
-                        data: date
-                    },
-                    yAxis: {
-                        type: 'value',
-                        boundaryGap: [0, '100%']
-                    },
-                    dataZoom: [
-                        {
-                            type: 'slider',
-                            xAxisIndex: 0,
-                            filterMode: 'none'
-                        },
-                        {
-                            type: 'slider',
-                            yAxisIndex: 0,
-                            filterMode: 'none'
-                        },
-                        {
-                            type: 'inside',
-                            xAxisIndex: 0,
-                            filterMode: 'none'
-                        },
-                        {
-                            type: 'inside',
-                            yAxisIndex: 0,
-                            filterMode: 'none'
-                        }
-                    ],
                     series: [
                         {
                             name: 'Random',
-                            type: 'line',
-                            symbol: 'none',
-                            sampling: 'lttb',
-                            itemStyle: {
-                                color: 'rgb(255, 70, 131)'
-                            },
-                            areaStyle: {
-                                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{
-                                    offset: 0,
-                                    color: 'rgb(255, 158, 68)'
-                                }, {
-                                    offset: 1,
-                                    color: 'rgb(255, 70, 131)'
-                                }])
-                            },
-                            data: data
+                            data: []
                         }
                     ]
                 },
                 pieOptions: {
-                    toolbox: {
-                        feature: {
-                            saveAsImage: { show: true }
-                        }
-                    },
-                    title: {
-                        text: "Traffic Sources",
-                        left: "center"
-                    },
-                    tooltip: {
-                        trigger: "item",
-                        formatter: "{a} <br/>{b} : {c} ({d}%)"
-                    },
-                    legend: {
-                        orient: "vertical",
-                        left: "left",
-                        data: [
-                            "Direct",
-                            "Email",
-                            "Ad Networks",
-                            "Video Ads",
-                            "Search Engines"
-                        ]
-                    },
                     series: [
                         {
                             name: "Traffic Sources",
-                            type: "pie",
-                            radius: "55%",
-                            center: ["50%", "60%"],
                             data: [
                                 { value: 335, name: "Direct" },
                                 { value: 310, name: "Email" },
@@ -345,104 +268,100 @@
                                 { value: 135, name: "Video Ads" },
                                 { value: 1548, name: "Search Engines" }
                             ],
-                            emphasis: {
-                                itemStyle: {
-                                    shadowBlur: 10,
-                                    shadowOffsetX: 0,
-                                    shadowColor: "rgba(0, 0, 0, 0.5)"
+                            label: {
+                                formatter: function() {
+                                    return "New users \n 12k";
                                 }
-                            }
+                            },
+                            center: ["25%", "50%"] //Center should be passed as option
+                        }
+                    ]
+                },
+                newPieOptions: {
+                    series: [
+                        {
+                            name: "Traffic Sources",
+                            data: [
+                                { value: 335, name: "Direct" },
+                                { value: 310, name: "Email" },
+                                { value: 234, name: "Ad Networks" },
+                            ],
+                            label: {
+                                formatter: function() {
+                                    return "Total users \n 12k";
+                                }
+                            },
                         }
                     ]
                 },
                 lineOptions: {
-                    title: {
-                        text: 'Lines'
-                    },
-                    tooltip: {
-                        trigger: 'axis'
-                    },
-                    legend: {
-                        data: ['A', 'B', 'C', 'D', 'E']
-                    },
-                    grid: {
-                        left: '3%',
-                        right: '4%',
-                        bottom: '3%',
-                        containLabel: true
-                    },
-                    toolbox: {
-                        feature: {
-                            dataZoom: {
-                                yAxisIndex: 'none'
-                            },
-                            restore: {},
-                            saveAsImage: { show: true }
-                        }
-                    },
-                    xAxis: {
-                        type: 'category',
-                        boundaryGap: false,
-                        data: [0, 1, 3, 4, 5, 6]
-                    },
-                    yAxis: {
-                        type: 'value'
-                    },
+                    // xAxis: {
+                    //     data: [10, 11, 13, 14, 15, 16, 17]
+                    // },
                     series: [
                         {
-                            name: 'A',
-                            type: 'line',
-                            stack: 'Value',
-                            data: [120, 132, 101, 134, 90, 230, 210]
+                            name: 'Series A',
+                            color: "pink",
+                            data: [{value: [0, 120]}, [1, 132], [2, 101], [3, 134], [4, 90], [5, 230], [6, 210]]
                         },
                         {
-                            name: 'B',
-                            type: 'line',
-                            stack: 'Value',
-                            data: [220, 182, 191, 234, 290, 330, 310]
+                            name: 'Series B',
+                            data: [[0, 220], [1, 182], [2, 191], [3, 234], [4, 290], [5, 330], [6, 310]]
                         },
                         {
-                            name: 'C',
-                            type: 'line',
-                            stack: 'Value',
-                            data: [150, 232, 201, 154, 190, 330, 410]
+                            name: 'Series C',
+                            data: [[0, 150], [1, 232], [2, 201], [3, 154], [4, 190], [5, 330], [6, 410]]
                         },
                         {
-                            name: 'D',
-                            type: 'line',
-                            stack: 'Value',
-                            data: [320, 332, 301, 334, 390, 330, 320]
+                            name: 'Series D',
+                            data: [[0, 320], [1, 332], [2, 301], [3, 334], [4, 390], [5, 330], [6, 320]]
                         },
                         {
-                            name: 'E',
-                            type: 'line',
-                            stack: 'Value',
-                            data: [820, 932, 901, 934, 1290, 1330, 1320]
+                            name: 'Series E',
+                            data: [[0, 820], [1, 932], [2, 901], [3, 934], [4, 1290], [5, 1330], [6, 1320]]
                         }
                     ]
                 },
                 barOptions: {
-                    toolbox: {
-                        feature: {
-                            saveAsImage: { show: true }
-                        }
-                    },
                     xAxis: {
-                        type: 'category',
                         data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
                     },
-                    yAxis: {
-                        type: 'value'
+                    series: [
+                        {
+                            name: "Weekly users",
+                            data: [120, 200, 150, 80, 70, 110, 130],
+                        },
+                        {
+                            name: "Weekly new users",
+                            data: [12, 90, 100, 50, 88, 110, 130],
+                        },
+                        {
+                            name: "Week old users",
+                            data: [2, 90, 77, 50, 44, 110, 10],
+                        }
+                    ]
+                },
+                stackedBarOptions: {
+                    xAxis: {
+                        data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
                     },
-                    series: [{
-                        data: [120, {
-                            value: 200,
-                            itemStyle: {
-                                color: '#a90000'
-                            }
-                        }, 150, 80, 70, 110, 130],
-                        type: 'bar'
-                    }]
+                    series: [
+                        {
+                            name: "Weekly users",
+                            data: [120, 200, 150, 80, 70, 110, 130],
+                            stack: 'A'
+                        },
+                        {
+                            name: "Weekly new users",
+                            data: [12, 90, 100, 50, 88, 110, 130],
+                            stack: 'A'
+                        },
+                        {
+                            name: "Week old users",
+                            data: [12, 90, 100, 50, 88, 110, 130],
+                            stack: 'A'
+                        }
+                    ]
                 }
             };
         },
@@ -457,6 +376,9 @@
                 return this.$store.getters["countlyVueExample/lineData"];
             }
         },
+        beforeCreate: function() {
+            this.$store.dispatch("countlyVueExample/fetchGraphPoints");
+        },
         methods: {
             refresh: function() {
                 this.$store.dispatch("countlyVueExample/fetchGraphPoints");
@@ -464,8 +386,8 @@
         }
     });
 
-    var ExampleDrawer = countlyVue.views.BaseView.extend({
-        template: '#drawer-template',
+    var ExampleDrawer = countlyVue.views.create({
+        template: CV.T("/vue-example/templates/drawer.html"),
         data: function() {
             return {
                 title: '',
@@ -508,8 +430,8 @@
         }
     });
 
-    var DateView = countlyVue.views.BaseView.extend({
-        template: '#vue-example-date-template',
+    var DateView = countlyVue.views.create({
+        template: CV.T('/vue-example/templates/date.html'),
         data: function() {
             return {
                 selectedDateRange: '10weeks',
@@ -521,25 +443,102 @@
         }
     });
 
-    var MainView = countlyVue.views.BaseView.extend({
-        template: '#vue-example-main-template',
-        mixins: [countlyVue.mixins.hasDrawers("main")],
-        components: {
-            "table-view": TableView,
-            "form-basics": FormBasics,
-            "form-dropdown": FormDropdown,
-            "tg-view": TimeGraphView,
-            "date-view": DateView,
-            "drawer": ExampleDrawer
+    var ProgressBarsView = countlyVue.views.create({
+        template: CV.T('/vue-example/templates/progress-bars.html'),
+        data: function() {
+            return {
+                title: "Progress bars",
+                stackedProgressBar: [{
+                    percentage: 40,
+                    color: "lightblue",
+                    tooltip: "user session"
+                }, {
+                    percentage: 30,
+                    color: "magenta",
+                    tooltip: "second item"
+                },
+                {
+                    percentage: 20,
+                    color: "cyan",
+                    tooltip: "another session type here"
+                }],
+                singleProgressBar: [{
+                    percentage: 50,
+                    color: "#39C0C8",
+                }],
+                hundredPercentProgressBar: [
+                    {
+                        percentage: 100,
+                        color: "#39C0C8",
+                    }
+                ],
+                zeroPercentProgressBar: [
+                    {
+                        percentage: 0,
+                        color: "yellow"
+                    }
+                ]
+            };
+        }
+    });
+
+    countlyVue.container.registerMixin("vue/example", {
+        data: function() {
+            return {
+                myname: "itsi"
+            };
         },
         beforeCreate: function() {
-            this.$store.dispatch("countlyVueExample/initialize");
+            // countlyVueExample.service.fetchRandomNumbers().then(function() {
+            //     You can now set data in store here
+            //     self.$store.dispatch("/set/data/in/store/here", data);
+            // });
+        }
+    });
+
+    countlyVue.container.registerMixin("vue/example", {
+        data: function() {
+            return {
+                myname: "pts"
+            };
         },
+        beforeCreate: function() {
+            // You can now set data in store here
+            // self.$store.dispatch("/set/data/in/store/here", data);
+        }
+    });
+
+    var AllTablesView = countlyVue.views.create({
+        template: CV.T('/vue-example/templates/tables.html'),
+        mixins: [countlyVue.mixins.hasDrawers("main")],
         data: function() {
             return {
                 appId: countlyCommon.ACTIVE_APP_ID,
-                currentTab: (this.$route.params && this.$route.params.tab) || "tables"
+                dynamicTab: "local-table",
+                localTabs: [
+                    {
+                        title: "Local table",
+                        name: "local-table",
+                        component: TableView,
+                        // route: "#/" + countlyCommon.ACTIVE_APP_ID + "/vue/example/tables/all"
+                    },
+                    {
+                        title: "Dummy table",
+                        name: "dummy-table",
+                        component: countlyVue.views.create({
+                            template: "<div>Hello there</div>"
+                        })
+                    }
+                ]
             };
+        },
+        components: {
+            "drawer": ExampleDrawer
+        },
+        computed: {
+            tabs: function() {
+                return this.localTabs;
+            }
         },
         methods: {
             add: function() {
@@ -548,43 +547,206 @@
         }
     });
 
-    var getMainView = function() {
+    var MainView_0 = countlyVue.views.create({
+        template: CV.T('/vue-example/templates/main_0.html'),
+        mixins: [
+            countlyVue.mixins.hasDrawers("main"),
+            countlyVue.container.tabsMixin({
+                "externalTabs": "vue/example"
+            })
+        ].concat(countlyVue.container.mixins(["vue/example"])),
+        components: {
+            "table-view": TableView,
+            "form-basics": FormBasics,
+            "form-dropdown": FormDropdown,
+            "tg-view": TimeGraphView,
+            "date-view": DateView,
+            "drawer": ExampleDrawer,
+            "progress-bars-view": ProgressBarsView
+        },
+        data: function() {
+            return {
+                appId: countlyCommon.ACTIVE_APP_ID,
+                currentTab: (this.$route.params && this.$route.params.tab) || "tables",
+            };
+        }
+    });
+
+    var MainView_1 = countlyVue.views.create({
+        template: CV.T('/vue-example/templates/main.html'),
+        mixins: [
+            countlyVue.container.tabsMixin({
+                "externalTabs": "vue/example"
+            })
+        ].concat(countlyVue.container.mixins(["vue/example"])),
+        data: function() {
+            return {
+                appId: countlyCommon.ACTIVE_APP_ID,
+                dynamicTab: (this.$route.params && this.$route.params.tab) || "tables",
+                localTabs: [
+                    {
+                        title: "Tables",
+                        name: "tables",
+                        component: AllTablesView,
+                        route: "#/" + countlyCommon.ACTIVE_APP_ID + "/vue/example/tables"
+                    },
+                    {
+                        title: "Form: Basic",
+                        name: "form-basic",
+                        component: FormBasics,
+                        route: "#/" + countlyCommon.ACTIVE_APP_ID + "/vue/example/form-basic"
+                    },
+                    {
+                        title: "Form: Dropdown",
+                        name: "form-dropdown",
+                        component: FormDropdown,
+                        route: "#/" + countlyCommon.ACTIVE_APP_ID + "/vue/example/form-dropdown"
+                    },
+                    {
+                        title: "Charts",
+                        name: "charts",
+                        component: TimeGraphView,
+                        route: "#/" + countlyCommon.ACTIVE_APP_ID + "/vue/example/charts"
+                    },
+                    {
+                        title: "Date",
+                        name: "date",
+                        component: DateView,
+                        route: "#/" + countlyCommon.ACTIVE_APP_ID + "/vue/example/date"
+                    },
+                    {
+                        title: "Progress bars",
+                        name: "progress-bars",
+                        component: ProgressBarsView,
+                        route: "#/" + countlyCommon.ACTIVE_APP_ID + "/vue/example/progress-bars"
+                    }
+                ]
+            };
+        },
+        computed: {
+            tabs: function() {
+                var allTabs = this.localTabs.concat(this.externalTabs);
+                return allTabs;
+            }
+        }
+    });
+
+    var getMainView_0 = function() {
         var vuex = [{
             clyModel: countlyVueExample
         }];
 
+        var tabsVuex = countlyVue.container.tabsVuex(["vue/example"]);
+
+        vuex = vuex.concat(tabsVuex);
+
         return new countlyVue.views.BackboneWrapper({
-            component: MainView,
+            component: MainView_0,
             vuex: vuex,
             templates: [
                 "/vue-example/templates/empty.html",
-                "/vue-example/templates/drawer.html",
-                "/vue-example/templates/form.html",
-                {
-                    namespace: 'vue-example',
-                    mapping: {
-                        'date-template': '/vue-example/templates/date.html',
-                        'table-template': '/vue-example/templates/table.html',
-                        'tg-template': '/vue-example/templates/tg.html',
-                        'main-template': '/vue-example/templates/main.html'
-                    }
-                }
+                "/vue-example/templates/form.html"
+            ]
+        });
+    };
+
+    //This is the main view that we use in /vue/example
+    var getMainView_1 = function() {
+        var vuex = [{
+            clyModel: countlyVueExample
+        }];
+
+        var tabsVuex = countlyVue.container.tabsVuex(["vue/example"]);
+
+        vuex = vuex.concat(tabsVuex);
+
+        return new countlyVue.views.BackboneWrapper({
+            component: MainView_1,
+            vuex: vuex,
+            templates: [
+                "/vue-example/templates/empty.html",
+                "/vue-example/templates/form.html"
             ]
         });
     };
 
     app.route("/vue/example", 'vue-example', function() {
-        var exampleView = getMainView();
+        var exampleView = getMainView_1();
         this.renderWhenReady(exampleView);
     });
 
     app.route("/vue/example/*tab", 'vue-example-tab', function(tab) {
-        var exampleView = getMainView();
+        var exampleView = getMainView_1();
         var params = {
             tab: tab
         };
         exampleView.params = params;
         this.renderWhenReady(exampleView);
+    });
+
+    app.route("/vue-0", 'vue-0', function() {
+        var newExampleView = getMainView_0();
+        this.renderWhenReady(newExampleView);
+    });
+
+    app.route("/vue-0/*tab", 'vue-0-tab', function(tab) {
+        var newExampleView = getMainView_0();
+        var params = {
+            tab: tab
+        };
+        newExampleView.params = params;
+        this.renderWhenReady(newExampleView);
+    });
+
+    countlyVue.container.registerTab("vue/example", {
+        priority: 1,
+        title: 'External tab 1',
+        name: 'external1',
+        route: "#/" + countlyCommon.ACTIVE_APP_ID + "/vue/example/external1",
+        component: countlyVue.components.create({
+            data: function() {
+                return {
+                    localStore: countlyVue.vuex.getLocalStore(window.foo.getVuexModule())
+                };
+            },
+            computed: {
+                message: function() {
+                    return this.localStore.getters["foo/bar/getName"];
+                }
+            },
+            methods: {
+                change: function() {
+                    this.localStore.dispatch("foo/bar/modifyName");
+                }
+            },
+            template: CV.T("/vue-example/templates/external-tab.html"),
+            beforeDestroy: function() {
+                this.localStore.unregisterModule("foo");
+            }
+        })
+    });
+
+    countlyVue.container.registerTab("vue/example", {
+        priority: 2,
+        title: 'External tab 2',
+        name: 'external2',
+        route: "#/" + countlyCommon.ACTIVE_APP_ID + "/vue/example/external2",
+        vuex: [{
+            clyModel: window.foo
+        }],
+        component: countlyVue.components.create({
+            computed: {
+                message: function() {
+                    return this.$store.getters["foo/getName"];
+                }
+            },
+            methods: {
+                change: function() {
+                    this.$store.dispatch("foo/modifyName");
+                }
+            },
+            template: CV.T("/vue-example/templates/external-tab.html")
+        })
     });
 
 })();

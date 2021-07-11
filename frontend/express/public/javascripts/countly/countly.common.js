@@ -134,7 +134,7 @@
         * @memberof countlyCommon
         * @param {string|array} period - new period, supported values are (month, 60days, 30days, 7days, yesterday, hour or [startMiliseconds, endMiliseconds] as [1417730400000,1420149600000])
         * @param {int} timeStamp - timeStamp for the period based
-        * @param {boolean} noSet - if set  - updates countly_date
+        * @param {boolean} noSet - if false  - updates countly_date
         */
         countlyCommon.setPeriod = function(period, timeStamp, noSet) {
             _period = period;
@@ -153,15 +153,18 @@
                 });
             }
 
+            if (noSet) {
+                /*
+                    Dont update vuex or local storage if noSet is true
+                */
+                return;
+            }
+
             if (window.countlyVue && window.countlyVue.vuex) {
                 var currentStore = window.countlyVue.vuex.getGlobalStore();
                 if (currentStore) {
                     currentStore.dispatch("countlyCommon/updatePeriod", {period: period, label: countlyCommon.getDateRangeForCalendar()});
                 }
-            }
-
-            if (noSet) {
-                return;
             }
 
             store.set("countly_date", period);
@@ -176,18 +179,9 @@
             return _period;
         };
 
-        /**
-        * Get currently selected period that can be used in ajax requests
-        * @memberof countlyCommon
-        * @returns {string} supported values are (month, 60days, 30days, 7days, yesterday, hour or [startMiliseconds, endMiliseconds] as [1417730400000,1420149600000])
-        */
+
         countlyCommon.getPeriodForAjax = function() {
-            if (Object.prototype.toString.call(_period) === '[object Array]') {
-                return JSON.stringify(_period);
-            }
-            else {
-                return _period;
-            }
+            return CountlyHelpers.getPeriodUrlQueryParameter(_period);
         };
 
         /**
@@ -1057,6 +1051,11 @@
                     */
                 function showCrosshairTooltip(dataIndex, position, onPoint) {
 
+                    //increase dataIndex if ticks are padded
+                    var tickIndex = dataIndex;
+                    if ((tickObj.ticks && tickObj.ticks[0] && tickObj.ticks[0][0] < 0) && (tickObj.tickTexts && tickObj.tickTexts[0] === "")) {
+                        tickIndex++;
+                    }
                     var tooltip = $("#graph-tooltip");
                     var crossHairPos = graphObj.p2c(position);
                     var minpoz = Math.max(200, tooltip.width());
@@ -1065,7 +1064,7 @@
 
                     if (onPoint) {
                         var dataSet = graphObj.getData(),
-                            tooltipHTML = "<div class='title'>" + tickObj.tickTexts[dataIndex] + "</div>";
+                            tooltipHTML = "<div class='title'>" + tickObj.tickTexts[tickIndex] + "</div>";
 
                         dataSet = _.sortBy(dataSet, function(obj) {
                             return obj.data[dataIndex][1];
@@ -2547,6 +2546,7 @@
         * @memberof countlyCommon
         * @param {string} bucket - time bucket, accepted values, hourly, weekly, monthly
         * @param {boolean} overrideBucket - override existing bucket logic and simply use current date for generating ticks
+        * @param {boolean} newChart - new chart implementation
         * @returns {object} object containing tick texts and ticks to use on time graphs
         * @example <caption>Example output</caption>
         *{
@@ -2559,7 +2559,7 @@
         *   "ticks":[[1,"23 Dec"],[4,"26 Dec"],[7,"29 Dec"],[10,"1 Jan"],[13,"4 Jan"],[16,"7 Jan"],[19,"10 Jan"],[22,"13 Jan"],[25,"16 Jan"],[28,"19 Jan"]]
         *}
         */
-        countlyCommon.getTickObj = function(bucket, overrideBucket) {
+        countlyCommon.getTickObj = function(bucket, overrideBucket, newChart) {
             var days = parseInt(countlyCommon.periodObj.numberOfDays, 10),
                 ticks = [],
                 tickTexts = [],
@@ -2567,11 +2567,18 @@
                 limitAdjustment = 0;
 
             if (overrideBucket) {
-                var thisDay = moment(countlyCommon.periodObj.activePeriod, "YYYY.M.D");
+                var thisDay;
+                if (countlyCommon.periodObj.activePeriod) {
+                    thisDay = moment(countlyCommon.periodObj.activePeriod, "YYYY.M.D");
+                }
+                else {
+                    thisDay = moment(countlyCommon.periodObj.currentPeriodArr[0], "YYYY.M.D");
+                }
                 ticks.push([0, countlyCommon.formatDate(thisDay, "D MMM")]);
                 tickTexts[0] = countlyCommon.formatDate(thisDay, "D MMM, dddd");
             }
             else if ((days === 1 && _period !== "month" && _period !== "day") || (days === 1 && bucket === "hourly")) {
+                //When period is an array or string like Xdays, Xweeks
                 for (var z = 0; z < 24; z++) {
                     ticks.push([z, (z + ":00")]);
                     tickTexts.push((z + ":00"));
@@ -2667,42 +2674,44 @@
             }
 
             var labelCn = ticks.length;
-            if (ticks.length <= 2) {
-                limitAdjustment = 0.02;
-                var tmpTicks = [],
-                    tmpTickTexts = [];
+            if (!newChart) {
+                if (ticks.length <= 2) {
+                    limitAdjustment = 0.02;
+                    var tmpTicks = [],
+                        tmpTickTexts = [];
 
-                tmpTickTexts[0] = "";
-                tmpTicks[0] = [-0.02, ""];
+                    tmpTickTexts[0] = "";
+                    tmpTicks[0] = [-0.02, ""];
 
-                for (var m = 0; m < ticks.length; m++) {
-                    tmpTicks[m + 1] = [m, ticks[m][1]];
-                    tmpTickTexts[m + 1] = tickTexts[m];
+                    for (var m = 0; m < ticks.length; m++) {
+                        tmpTicks[m + 1] = [m, ticks[m][1]];
+                        tmpTickTexts[m + 1] = tickTexts[m];
+                    }
+
+                    tmpTickTexts.push("");
+                    tmpTicks.push([tmpTicks.length - 1 - 0.98, ""]);
+
+                    ticks = tmpTicks;
+                    tickTexts = tmpTickTexts;
                 }
+                else if (!skipReduction && ticks.length > 10) {
+                    var reducedTicks = [],
+                        step = (Math.floor(ticks.length / 10) < 1) ? 1 : Math.floor(ticks.length / 10),
+                        pickStartIndex = (Math.floor(ticks.length / 30) < 1) ? 1 : Math.floor(ticks.length / 30);
 
-                tmpTickTexts.push("");
-                tmpTicks.push([tmpTicks.length - 1 - 0.98, ""]);
+                    for (var l = pickStartIndex; l < (ticks.length - 1); l = l + step) {
+                        reducedTicks.push(ticks[l]);
+                    }
 
-                ticks = tmpTicks;
-                tickTexts = tmpTickTexts;
-            }
-            else if (!skipReduction && ticks.length > 10) {
-                var reducedTicks = [],
-                    step = (Math.floor(ticks.length / 10) < 1) ? 1 : Math.floor(ticks.length / 10),
-                    pickStartIndex = (Math.floor(ticks.length / 30) < 1) ? 1 : Math.floor(ticks.length / 30);
-
-                for (var l = pickStartIndex; l < (ticks.length - 1); l = l + step) {
-                    reducedTicks.push(ticks[l]);
+                    ticks = reducedTicks;
                 }
+                else {
+                    ticks[0] = null;
 
-                ticks = reducedTicks;
-            }
-            else {
-                ticks[0] = null;
-
-                // Hourly ticks already contain 23 empty slots at the end
-                if (!(bucket === "hourly" && days !== 1)) {
-                    ticks[ticks.length - 1] = null;
+                    // Hourly ticks already contain 23 empty slots at the end
+                    if (!(bucket === "hourly" && days !== 1)) {
+                        ticks[ticks.length - 1] = null;
+                    }
                 }
             }
 
@@ -2953,71 +2962,100 @@
         * countlyCommon.formatTimeAgo(1484654066);
         */
         countlyCommon.formatTimeAgo = function(timestamp) {
+            var meta = countlyCommon.formatTimeAgoText(timestamp);
+            var elem = $("<span>");
+            elem.prop("title", meta.tooltip);
+            if (meta.color) {
+                elem.css("color", meta.color);
+            }
+            elem.text(meta.text);
+            elem.append("<a style='display: none;'>|" + meta.tooltip + "</a>");
+            return elem.prop('outerHTML');
+        };
+
+        /**
+        * Format timestamp to twitter like time ago format with real date as tooltip and hidden data for exporting
+        * @memberof countlyCommon
+        * @param {number} timestamp - timestamp in seconds or miliseconds
+        * @returns {string} formated time ago
+        * @example
+        * //outputs ago time without html tags
+        * countlyCommon.formatTimeAgo(1484654066);
+        */
+        countlyCommon.formatTimeAgoText = function(timestamp) {
             if (Math.round(timestamp).toString().length === 10) {
                 timestamp *= 1000;
             }
             var target = new Date(timestamp);
             var tooltip = moment(target).format("ddd, D MMM YYYY HH:mm:ss");
-            var elem = $("<span>");
-            elem.prop("title", tooltip);
+            var text = tooltip;
+            var color = null;
             var now = new Date();
             var diff = Math.floor((now - target) / 1000);
             if (diff <= -2592000) {
-                elem.text(tooltip);
+                return tooltip;
             }
             else if (diff < -86400) {
-                elem.text(jQuery.i18n.prop("common.in.days", Math.abs(Math.round(diff / 86400))));
+                text = jQuery.i18n.prop("common.in.days", Math.abs(Math.round(diff / 86400)));
             }
             else if (diff < -3600) {
-                elem.text(jQuery.i18n.prop("common.in.hours", Math.abs(Math.round(diff / 3600))));
+                text = jQuery.i18n.prop("common.in.hours", Math.abs(Math.round(diff / 3600)));
             }
             else if (diff < -60) {
-                elem.text(jQuery.i18n.prop("common.in.minutes", Math.abs(Math.round(diff / 60))));
+                text = jQuery.i18n.prop("common.in.minutes", Math.abs(Math.round(diff / 60)));
             }
             else if (diff <= -1) {
-                elem.css("color", "#50C354"); elem.text(jQuery.i18n.prop("common.in.seconds", Math.abs(diff)));
+                color = "#50C354";
+                text = (jQuery.i18n.prop("common.in.seconds", Math.abs(diff)));
             }
             else if (diff <= 1) {
-                elem.css("color", "#50C354"); elem.text(jQuery.i18n.map["common.ago.just-now"]);
+                color = "#50C354";
+                text = jQuery.i18n.map["common.ago.just-now"];
             }
             else if (diff < 20) {
-                elem.css("color", "#50C354"); elem.text(jQuery.i18n.prop("common.ago.seconds-ago", diff));
+                color = "#50C354";
+                text = jQuery.i18n.prop("common.ago.seconds-ago", diff);
             }
             else if (diff < 40) {
-                elem.css("color", "#50C354"); elem.text(jQuery.i18n.map["common.ago.half-minute"]);
+                color = "#50C354";
+                text = jQuery.i18n.map["common.ago.half-minute"];
             }
             else if (diff < 60) {
-                elem.css("color", "#50C354"); elem.text(jQuery.i18n.map["common.ago.less-minute"]);
+                color = "#50C354";
+                text = jQuery.i18n.map["common.ago.less-minute"];
             }
             else if (diff <= 90) {
-                elem.text(jQuery.i18n.map["common.ago.one-minute"]);
+                text = jQuery.i18n.map["common.ago.one-minute"];
             }
             else if (diff <= 3540) {
-                elem.text(jQuery.i18n.prop("common.ago.minutes-ago", Math.round(diff / 60)));
+                text = jQuery.i18n.prop("common.ago.minutes-ago", Math.round(diff / 60));
             }
             else if (diff <= 5400) {
-                elem.text(jQuery.i18n.map["common.ago.one-hour"]);
+                text = jQuery.i18n.map["common.ago.one-hour"];
             }
             else if (diff <= 86400) {
-                elem.text(jQuery.i18n.prop("common.ago.hours-ago", Math.round(diff / 3600)));
+                text = jQuery.i18n.prop("common.ago.hours-ago", Math.round(diff / 3600));
             }
             else if (diff <= 129600) {
-                elem.text(jQuery.i18n.map["common.ago.one-day"]);
+                text = jQuery.i18n.map["common.ago.one-day"];
             }
             else if (diff < 604800) {
-                elem.text(jQuery.i18n.prop("common.ago.days-ago", Math.round(diff / 86400)));
+                text = jQuery.i18n.prop("common.ago.days-ago", Math.round(diff / 86400));
             }
             else if (diff <= 777600) {
-                elem.text(jQuery.i18n.map["common.ago.one-week"]);
+                text = jQuery.i18n.map["common.ago.one-week"];
             }
             else if (diff <= 2592000) {
-                elem.text(jQuery.i18n.prop("common.ago.days-ago", Math.round(diff / 86400)));
+                text = jQuery.i18n.prop("common.ago.days-ago", Math.round(diff / 86400));
             }
             else {
-                elem.text(tooltip);
+                text = tooltip;
             }
-            elem.append("<a style='display: none;'>|" + tooltip + "</a>");
-            return elem.prop('outerHTML');
+            return {
+                text: text,
+                tooltip: tooltip,
+                color: color
+            };
         };
 
         /**
@@ -4500,6 +4538,21 @@
             }
 
             return "rgba(" + +r + "," + +g + "," + +b + "," + a + ")";
+        };
+
+        /**
+		 * Unescapes provided string.
+         * -- Please use carefully --
+         * Mainly for rendering purposes.
+		 * @param {String} text - Arbitrary string
+         * @param {String} df - Default value
+		 * @returns {String} rgba string
+		 */
+        countlyCommon.unescapeString = function(text, df) {
+            if (text === undefined && df === undefined) {
+                return undefined;
+            }
+            return _.unescape(text || df).replace(/&#39;/g, "'");
         };
     };
 

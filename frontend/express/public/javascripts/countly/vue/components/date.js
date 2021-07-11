@@ -467,7 +467,7 @@
         }
     };
 
-    Vue.component("cly-datepicker", countlyBaseComponent.extend({
+    Vue.component("cly-date-picker", countlyVue.components.create({
         mixins: [
             _mixins.i18n,
             InputControlsMixin,
@@ -488,7 +488,10 @@
                 if (this.type === "daterange" && this.displayShortcuts) {
                     var self = this;
                     return Object.keys(availableShortcuts).reduce(function(acc, shortcutKey) {
-                        if (self.enabledShortcuts !== false) {
+                        if (self.enabledShortcuts === false && self.disabledShortcuts === false) {
+                            acc.push(availableShortcuts[shortcutKey]);
+                        }
+                        else if (self.enabledShortcuts !== false) {
                             if (self.enabledShortcuts.indexOf(shortcutKey) !== -1) {
                                 acc.push(availableShortcuts[shortcutKey]);
                             }
@@ -543,6 +546,10 @@
                 validator: function(value) {
                     return ['s', 'ms'].indexOf(value) !== -1;
                 }
+            },
+            placement: {
+                type: String,
+                default: 'bottom-start'
             }
         },
         data: function() {
@@ -746,126 +753,10 @@
                 }
             }
         },
-        template: '<cly-dropdown\
-                        ref="dropdown"\
-                        @hide="handleDropdownHide"\
-                        @show="handleDropdownShow"\
-                        :placeholder="placeholder"\
-                        :disabled="disabled">\
-                        <template v-slot:trigger="dropdown">\
-                            <slot name="trigger">\
-                                <cly-input-dropdown-trigger\
-                                    ref="trigger"\
-                                    :adaptive-length="true"\
-                                    :arrow="false"\
-                                    :prefix-icon="\'el-icon-date\'"\
-                                    :disabled="disabled"\
-                                    :selected-options="label"\
-                                    :focused="dropdown.focused"\
-                                    :opened="dropdown.visible"\
-                                    :size="size"\
-                                    :placeholder="placeholder">\
-                                </cly-input-dropdown-trigger>\
-                            </slot>\
-                        </template>\
-                        <div class="cly-vue-daterp">\
-                            <div class="cly-vue-daterp__shortcuts-col" v-if="shortcuts && shortcuts.length > 0">\
-                                <div class="text-medium font-weight-bold cly-vue-daterp__shortcut cly-vue-daterp__shortcut--custom"\
-                                    @click="handleCustomRangeClick">\
-                                    Custom Range<i class="el-icon-caret-right"></i>\
-                                </div>\
-                                <div class="text-medium font-weight-bold cly-vue-daterp__shortcut"\
-                                    :class="{\'cly-vue-daterp__shortcut--active\': selectedShortcut == shortcut.value}"\
-                                    v-for="shortcut in shortcuts"\
-                                    @click="handleShortcutClick(shortcut.value)">\
-                                    {{shortcut.label}}\
-                                </div>\
-                            </div>\
-                            <div class="cly-vue-daterp__calendars-col" v-if="customRangeSelection">\
-                                <div class="cly-vue-daterp__input-methods" :class="{\'cly-vue-daterp__hidden-tabs\': !showRelativeModes}">\
-                                    <el-tabs v-model="rangeMode" @tab-click="handleTabChange">\
-                                        <el-tab-pane name="inBetween">\
-                                            <template slot="label"><span class="text-medium font-weight-bold">In Between</span></template>\
-                                            <div class="cly-vue-daterp__input-wrapper">\
-                                                <el-input size="small" :class="{\'is-active\': isStartFocused, \'is-error\': inBetweenInput.raw.invalid0}" @focus="handleTextStartFocus" @blur="handleTextStartBlur" v-model="inBetweenInput.raw.textStart"></el-input>\
-                                                <span class="text-medium cly-vue-daterp__in-between-conj">and</span>\
-                                                <el-input size="small" :class="{\'is-active\': isEndFocused, \'is-error\': inBetweenInput.raw.invalid1}" @focus="handleTextEndFocus" @blur="handleTextEndBlur" v-model="inBetweenInput.raw.textEnd"></el-input>\
-                                            </div>\
-                                        </el-tab-pane>\
-                                        <el-tab-pane name="since">\
-                                            <template slot="label"><span class="text-medium font-weight-bold">Since</span></template>\
-                                            <div class="cly-vue-daterp__input-wrapper">\
-                                                <el-input size="small" :class="{\'is-error\': sinceInput.raw.invalid0}" v-model="sinceInput.raw.text" @blur="handleSinceBlur"></el-input>\
-                                            </div>\
-                                        </el-tab-pane>\
-                                        <el-tab-pane name="inTheLast">\
-                                            <template slot="label"><span class="text-medium font-weight-bold">In the Last</span></template>\
-                                            <div class="cly-vue-daterp__input-wrapper">\
-                                                <el-input size="small" v-model.number="inTheLastInput.raw.text"></el-input>\
-                                                <el-select size="small" v-model="inTheLastInput.raw.level">\
-                                                    <el-option v-if="tableType === \'date\'" label="Days" value="days"></el-option>\
-                                                    <el-option v-if="tableType === \'date\'" label="Weeks" value="weeks"></el-option>\
-                                                    <el-option label="Months" value="months"></el-option>\
-                                                </el-select>\
-                                            </div>\
-                                        </el-tab-pane>\
-                                    </el-tabs>\
-                                    <div class="cly-vue-daterp__day-names-wrapper" v-if="tableType === \'date\'">\
-                                        <table class="cly-vue-daterp__day-names"><tr><th>Su</th><th>Mo</th><th>Tu</th><th>We</th><th>Th</th><th>Fr</th><th>Sa</th></tr></table>\
-                                    </div>\
-                                </div>\
-                                <div class="cly-vue-daterp__calendars-wrapper">\
-                                    <div class="cly-vue-daterp__table-wrap" :class="{\'is-start-focused\': isStartFocused, \'is-end-focused\': isEndFocused}" style="height: 248px" ref="calendarsViewport">\
-                                            <recycle-scroller\
-                                                ref="scroller"\
-                                                style="height:248px"\
-                                                key-field="key"\
-                                                :items="globalRange"\
-                                                :item-size="248"\
-                                                class="scroller">\
-                                                <template v-slot="{ item }">\
-                                                    <div class="cly-vue-daterp__table-view" v-if="tableType === \'month\'">\
-                                                        <month-table\
-                                                            :key="item.key"\
-                                                            :date-meta="item"\
-                                                            selection-mode="range"\
-                                                            :date="item.date"\
-                                                            :min-date="minDate"\
-                                                            :max-date="maxDate"\
-                                                            :disabled-date="disabledDateFn"\
-                                                            :rangeState="rangeState"\
-                                                            @pick="handleRangePick"\
-                                                            @changerange="handleChangeRange">\
-                                                        </month-table>\
-                                                    </div>\
-                                                    <div class="cly-vue-daterp__table-view" v-else>\
-                                                        <date-table\
-                                                            :key="item.key"\
-                                                            :date-meta="item"\
-                                                            selection-mode="range"\
-                                                            :date="item.date"\
-                                                            :min-date="minDate"\
-                                                            :max-date="maxDate"\
-                                                            :disabled-date="disabledDateFn"\
-                                                            :rangeState="rangeState"\
-                                                            @pick="handleRangePick"\
-                                                            @changerange="handleChangeRange">\
-                                                        </date-table>\
-                                                    </div>\
-                                                </template>\
-                                            </recycle-scroller>\
-                                    </div>\
-                                </div>\
-                                <div class="cly-vue-daterp__commit-section">\
-                                    <el-button @click="handleDiscardClick" size="small">{{ i18n("common.cancel") }}</el-button>\
-                                    <el-button @click="handleConfirmClick" type="primary" size="small">{{ i18n("common.confirm") }}</el-button>\
-                                </div>\
-                            </div>\
-                        </div>\
-                    </cly-dropdown>',
+        template: CV.T('/javascripts/countly/vue/templates/datepicker.html')
     }));
 
-    Vue.component("cly-datepicker-g", countlyBaseComponent.extend({
+    var globalDatepicker = countlyBaseComponent.extend({
         computed: {
             globalDate:
             {
@@ -882,7 +773,17 @@
                 this.$root.$emit("cly-date-change");
             }
         },
-        template: '<cly-datepicker timestampFormat="ms" :disabled-shortcuts="[\'0days\']" modelMode="absolute" v-model="globalDate" @change="onChange"></cly-datepicker>'
-    }));
+        template: '<cly-date-picker timestampFormat="ms" :disabled-shortcuts="[\'0days\']" modelMode="absolute" v-model="globalDate" @change="onChange"></cly-date-picker>'
+    });
+
+    Vue.component("cly-date-picker-g", globalDatepicker);
+
+    /*
+        Remove the following component.
+        Its only used by
+        - surveys
+        - cly-panel (deprecated)
+    */
+    Vue.component("cly-global-date-selector-w", globalDatepicker);
 
 }(window.countlyVue = window.countlyVue || {}));
