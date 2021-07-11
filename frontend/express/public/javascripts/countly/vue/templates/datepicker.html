@@ -1,7 +1,9 @@
 <cly-dropdown
+    v-tooltip="label"
     ref="dropdown"
     @hide="handleDropdownHide"
     @show="handleDropdownShow"
+    :placement="placement"
     :placeholder="placeholder"
     :disabled="disabled">
     <template v-slot:trigger="dropdown">
