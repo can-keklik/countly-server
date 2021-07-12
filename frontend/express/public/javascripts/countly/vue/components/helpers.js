@@ -281,4 +281,9 @@
                     </v-popover>',
     }));
 
+    Vue.component("cly-value", countlyBaseComponent.extend({
+        template: '<span></span>',
+        props: ['value']
+    }));
+
 }(window.countlyVue = window.countlyVue || {}));
